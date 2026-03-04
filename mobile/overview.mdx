@@ -1,0 +1,73 @@
+---
+title: Mobile App
+description: "Overview of the Recipe Room iOS app built with Expo and React Native."
+---
+
+## Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| Expo SDK 54 | React Native framework |
+| expo-router | File-based routing |
+| NativeWind | Tailwind CSS for React Native |
+| React Query | Server state management |
+| React Hook Form + Zod | Form handling and validation |
+| Supabase JS | Database, auth, storage |
+| Lucide React Native | Icons |
+
+## Architecture
+
+The mobile app mirrors the web app's architecture but adapted for React Native:
+
+- Direct Supabase queries for reads (not going through the web API)
+- Shared Zod schemas from `@recipe-room/shared` for validation
+- React Query for caching and server state
+- expo-router for file-based navigation
+
+## Navigation Structure
+
+```
+app/
+├── (tabs)/                   # Bottom tab navigation
+│   ├── index.tsx             # Home feed
+│   ├── discover.tsx          # Discover content
+│   ├── search.tsx            # Global search
+│   ├── saved.tsx             # Saved items & collections
+│   └── profile.tsx           # Current user profile
+├── post/[id].tsx             # Post detail
+├── recipe/[id].tsx           # Recipe detail
+├── collection/[id].tsx       # Collection detail
+├── connections/[username].tsx # User connections
+├── followers/[username].tsx  # Followers list
+├── following/[username].tsx  # Following list
+├── login.tsx                 # Login screen
+├── register.tsx              # Registration
+├── settings.tsx              # Account settings
+└── notifications.tsx         # Notifications
+```
+
+## Key Differences from Web
+
+| Aspect | Web | Mobile |
+|--------|-----|--------|
+| Data fetching | API routes → Supabase | Direct Supabase queries |
+| Styling | Tailwind CSS | NativeWind |
+| Routing | Next.js App Router | expo-router |
+| Image handling | next/image | expo-image |
+| Storage | Cookies | expo-secure-store |
+| Haptics | N/A | expo-haptics |
+
+## Feature Status
+
+| Feature | Status |
+|---------|--------|
+| Authentication | ✅ Complete |
+| Follow/Unfollow | ✅ Complete |
+| Posts (CRUD) | ✅ Complete |
+| Recipes (CRUD) | ✅ Complete |
+| Likes/Favorites | ✅ Complete |
+| Collections | ✅ Complete |
+| Saved Items | ✅ Complete |
+| Comments & Mentions | ✅ Complete |
+| Notifications | 🔄 In Progress |
+| Global Search | ✅ Complete |

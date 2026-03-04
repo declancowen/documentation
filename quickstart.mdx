@@ -1,97 +1,75 @@
 ---
-title: 'Quickstart'
-description: 'Start building awesome documentation in under 5 minutes'
+title: Quickstart
+description: "Get Recipe Room running locally in a few minutes."
 ---
 
-## Setup your development
+## Prerequisites
 
-Learn how to update your docs locally and deploy them to the public.
+- Node.js 18+
+- pnpm 8+
+- A Supabase project ([supabase.com](https://supabase.com))
+- iOS Simulator (for mobile development)
 
-### Edit and preview
+## Installation
 
-<AccordionGroup>
-  <Accordion icon="github" title="Clone your docs locally">
-    During the onboarding process, we created a repository on your Github with
-    your docs content. You can find this repository on our
-    [dashboard](https://dashboard.mintlify.com). To clone the repository
-    locally, follow these
-    [instructions](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
-    in your terminal.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Preview changes">
-    Previewing helps you make sure your changes look as intended. We built a
-    command line interface to render these changes locally. 
-    1. Install the
-    [Mintlify CLI](https://www.npmjs.com/package/mintlify) to preview the
-    documentation changes locally with this command: ``` npm i -g mintlify ```
-    2. Run the following command at the root of your documentation (where
-    `docs.json` is): ``` mintlify dev ```
-    <Note>
-      If you’re currently using the legacy ```mint.json``` configuration file, please update the Mintlify CLI:
+<Steps>
+  <Step title="Clone and install">
+    ```bash
+    git clone <repo-url>
+    cd recipe-room-monorepo
+    pnpm install
+    ```
+  </Step>
+  <Step title="Set up environment variables">
+    ```bash
+    cp apps/web/.env.example apps/web/.env.local
+    cp apps/mobile/.env.example apps/mobile/.env
+    ```
 
+    Fill in your Supabase credentials:
 
-      ```npm i -g mintlify@latest```
-      And run the new upgrade command in your docs repository:
+    **Web** (`apps/web/.env.local`):
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+    LOOPS_API_KEY=your_loops_api_key
+    ```
 
-      ```mintlify upgrade```
-      You should now be using the new ```docs.json``` configuration file. Feel free to delete the ```mint.json``` file from your repository.
-    </Note>
-  </Accordion>
-</AccordionGroup>
+    **Mobile** (`apps/mobile/.env`):
+    ```env
+    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
+    ```
+  </Step>
+  <Step title="Set up the database">
+    Run the initial migration in your Supabase SQL Editor:
 
-### Deploy your changes
+    1. Go to your Supabase dashboard → SQL Editor
+    2. Paste the contents of `supabase/migrations/001_initial_schema.sql`
+    3. Run the query
 
-<AccordionGroup>
+    See [Supabase Setup](/database/supabase-setup) for full details.
+  </Step>
+  <Step title="Start developing">
+    ```bash
+    # Web app
+    pnpm dev:web
 
-<Accordion icon="message-bot" title="Install our Github app">
-  Our Github app automatically deploys your changes to your docs site, so you
-  don't need to manage deployments yourself. You can find the link to install on
-  your [dashboard](https://dashboard.mintlify.com). Once the bot has been
-  successfully installed, there should be a check mark next to the commit hash
-  of the repo.
-</Accordion>
-<Accordion icon="rocket" title="Push your changes">
-  [Commit and push your changes to
-  Git](https://docs.github.com/en/get-started/using-git/pushing-commits-to-a-remote-repository#about-git-push)
-  for your changes to update in your docs site. If you push and don't see that
-  the Github app successfully deployed your changes, you can also manually
-  update your docs through our [dashboard](https://dashboard.mintlify.com).
-</Accordion>
+    # Mobile app (iOS)
+    pnpm dev:mobile
+    ```
+  </Step>
+</Steps>
 
-</AccordionGroup>
+## Available Scripts
 
-## Update your docs
-
-Add content directly in your files with MDX syntax and React components. You can use any of our components, or even build your own.
-
-<CardGroup>
-
-<Card title="Add Content With MDX" icon="file" href="/essentials/markdown">
-  Add content to your docs with MDX syntax.
-</Card>
-
-<Card
-  title="Add Code Blocks"
-  icon="square-code"
-  href="/essentials/code"
->
-  Add code directly to your docs with syntax highlighting.
-</Card>
-
-<Card
-  title="Add Images"
-  icon="image"
-  href="/essentials/images"
->
-  Add images to your docs to make them more engaging.
-</Card>
-
-<Card
-  title="Add Custom Components"
-  icon="puzzle-piece"
-  href="/essentials/reusable-snippets"
->
-  Add templates to your docs to make them more reusable.
-</Card>
-
-</CardGroup>
+| Command | Description |
+|---------|-------------|
+| `pnpm dev:web` | Start Next.js dev server |
+| `pnpm dev:mobile` | Start Expo dev server |
+| `pnpm build:web` | Build web app for production |
+| `pnpm lint` | Lint all packages |
+| `pnpm type-check` | Type check all packages |
+| `pnpm test` | Run tests across all packages |

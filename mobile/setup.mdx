@@ -1,0 +1,75 @@
+---
+title: Mobile Setup
+description: "Getting the Recipe Room mobile app running locally."
+---
+
+## Prerequisites
+
+- Node.js 18+
+- pnpm 8+
+- Xcode with iOS Simulator
+- Expo Go app (for development builds) or EAS CLI
+
+## Local Development
+
+<Steps>
+  <Step title="Install dependencies">
+    From the monorepo root:
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  <Step title="Configure environment">
+    ```bash
+    cp apps/mobile/.env.example apps/mobile/.env
+    ```
+
+    Fill in your Supabase credentials:
+    ```env
+    EXPO_CONFIG_MODE=development
+    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
+    ```
+
+    Set `EXPO_CONFIG_MODE=development` for Expo Go, or `production` for EAS builds.
+  </Step>
+  <Step title="Start the dev server">
+    ```bash
+    pnpm dev:mobile
+    ```
+
+    Or with specific network modes:
+    ```bash
+    # Tunnel mode (for remote devices)
+    cd apps/mobile && pnpm dev:tunnel
+
+    # LAN mode
+    cd apps/mobile && pnpm dev:lan
+    ```
+  </Step>
+</Steps>
+
+## Shared Package
+
+The mobile app imports from `@recipe-room/shared`:
+
+```tsx
+import {
+  recipeSchema,
+  type RecipeFormValues,
+  FILM_SIMULATIONS,
+  ApiClient
+} from '@recipe-room/shared';
+```
+
+Changes to the shared package are picked up automatically during development since pnpm workspaces link them directly.
+
+## Useful Commands
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev:mobile` | Start Expo dev server |
+| `cd apps/mobile && pnpm type-check` | Type check mobile app |
+| `cd apps/mobile && pnpm test` | Run mobile tests |
+| `cd apps/mobile && pnpm lint` | Lint mobile code |

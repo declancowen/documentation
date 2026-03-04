@@ -1,71 +1,55 @@
 ---
 title: Introduction
-description: "Welcome to the home of your new documentation"
+description: "Developer documentation for Recipe Room — a Fujifilm film simulation recipe sharing platform."
 ---
 
-<img
-  className="block dark:hidden"
-  src="/images/hero-light.png"
-  alt="Hero Light"
-/>
-<img
-  className="hidden dark:block"
-  src="/images/hero-dark.png"
-  alt="Hero Dark"
-/>
+## What is Recipe Room?
 
-## Setting up
+Recipe Room is a social platform for sharing Fujifilm camera film simulation recipes. Users create, share, and discover custom film simulation settings for Fujifilm X-series cameras, organize them into collections, and engage with the community through posts, follows, and favorites.
 
-The first step to world-class documentation is setting up your editing environments.
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Web Frontend | Next.js 14 (App Router), React 18, TypeScript |
+| Mobile | Expo SDK 54, expo-router, NativeWind |
+| Backend | Next.js API Routes (serverless on Vercel) |
+| Database | PostgreSQL via Supabase |
+| Storage | Supabase Storage (avatars, recipe-images, post-images) |
+| Auth | Supabase Auth (email/password) |
+| Email | Loops.so |
+| UI | shadcn/ui + Tailwind CSS |
+| State | React Query, React Context, React Hook Form + Zod |
+| Testing | Jest, React Testing Library, fast-check |
+
+## Monorepo Structure
+
+```
+recipe-room-monorepo/
+├── apps/
+│   ├── web/          # Next.js 14 web application
+│   └── mobile/       # React Native (Expo) iOS app
+├── packages/
+│   └── shared/       # Shared types, validation, constants
+├── docs/             # Documentation
+└── supabase/         # Database schema and migrations
+```
+
+The monorepo is managed with pnpm workspaces. The `@recipe-room/shared` package provides types, Zod validation schemas, constants, and API utilities shared between web and mobile.
+
+## Core Concepts
 
 <CardGroup cols={2}>
-  <Card
-    title="Edit Your Docs"
-    icon="pen-to-square"
-    href="https://mintlify.com/docs/quickstart"
-  >
-    Get your docs set up locally for easy development
+  <Card title="Film Simulation Recipes" icon="camera">
+    Complete Fujifilm X-series camera settings including film simulation, dynamic range, grain, white balance, tone curve, color, sharpness, noise reduction, and clarity.
   </Card>
-  <Card
-    title="Preview Changes"
-    icon="image"
-    href="https://mintlify.com/docs/development"
-  >
-    Preview your changes before you push to make sure they're perfect
+  <Card title="Posts" icon="image">
+    Photo posts with multi-image support, tags, camera metadata, and optional recipe linking.
   </Card>
-</CardGroup>
-
-## Make it yours
-
-Update your docs to your brand and add valuable content for the best user conversion.
-
-<CardGroup cols={2}>
-  <Card
-    title="Customize Style"
-    icon="palette"
-    href="https://mintlify.com/docs/settings/global"
-  >
-    Customize your docs to your company's colors and brands
+  <Card title="Collections" icon="folder">
+    User-created groupings of saved recipes and posts, with public/private visibility.
   </Card>
-  <Card
-    title="Reference APIs"
-    icon="code"
-    href="https://mintlify.com/docs/api-playground/openapi"
-  >
-    Automatically generate endpoints from an OpenAPI spec
-  </Card>
-  <Card
-    title="Add Components"
-    icon="screwdriver-wrench"
-    href="https://mintlify.com/docs/content/components/accordions"
-  >
-    Build interactive features and designs to guide your users
-  </Card>
-  <Card
-    title="Get Inspiration"
-    icon="stars"
-    href="https://mintlify.com/customers"
-  >
-    Check out our showcase of our favorite documentation
+  <Card title="Social" icon="users">
+    Follow creators, favorite content, comment with @mentions, and receive notifications.
   </Card>
 </CardGroup>

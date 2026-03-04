@@ -1,0 +1,86 @@
+---
+title: RLS Policies
+description: "Row Level Security policies protecting Recipe Room data."
+---
+
+## Overview
+
+All tables have Row Level Security enabled. RLS acts as the last line of defense — even if an API route has a bug, unauthorized data access is blocked at the database level.
+
+## Policy Patterns
+
+### Public Read, Owner Write
+
+Most content tables (profiles, recipes, posts, collections) follow this pattern:
+
+```sql
+-- Anyone can read
+CREATE POLICY "Public read" ON recipes
+  FOR SELECT USING (true);
+
+-- Only owner can insert
+CREATE POLICY "Owner insert" ON recipes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Only owner can update
+CREATE POLICY "Owner update" ON recipes
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Only owner can delete
+CREATE POLICY "Owner delete" ON recipes
+  FOR DELETE USING (auth.uid() = user_id);
+```
+
+### Authenticated Actions
+
+Social features (follows, favorites, comments) require authentication:
+
+```sql
+-- Authenticated users can follow
+CREATE POLICY "Authenticated follow" ON follows
+  FOR INSERT WITH CHECK (auth.uid() = follower_id);
+
+-- Users can only unfollow their own follows
+CREATE POLICY "Own unfollow" ON follows
+  FOR DELETE USING (auth.uid() = follower_id);
+```
+
+### Self-Referencing Constraints
+
+The `follows` table prevents self-follows at the database level:
+
+```sql
+CHECK (follower_id != following_id)
+```
+
+## Storage Policies
+
+Storage buckets use folder-based ownership. Each user uploads to a folder named after their `auth.uid()`:
+
+```sql
+-- Users can upload to their own folder
+CREATE POLICY "User upload" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'recipe-images' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Public read access
+CREATE POLICY "Public read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'recipe-images');
+```
+
+## Soft Deletes
+
+Recipes and posts use `is_deleted` flags rather than hard deletes. Views automatically filter these:
+
+```sql
+CREATE VIEW recipe_with_stats AS
+SELECT r.*, ...
+FROM recipes r
+WHERE r.is_deleted = FALSE;
+```
+
+<Note>
+  Always filter by `is_deleted = FALSE` in queries. The views handle this automatically, but direct table queries need the filter.
+</Note>

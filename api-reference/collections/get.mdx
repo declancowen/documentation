@@ -1,0 +1,52 @@
+---
+title: Get Collection
+description: "Get a collection with its items."
+---
+
+## GET /api/collections/[id]
+
+Returns a collection with its saved items (recipes and posts).
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Collection ID |
+
+### Response (200)
+
+```json
+{
+  "id": "uuid",
+  "name": "Tokyo Street Recipes",
+  "description": "My favorite street photography settings",
+  "coverImageUrl": "https://...",
+  "isPublic": true,
+  "author": {
+    "id": "uuid",
+    "username": "johndoe",
+    "avatarUrl": "https://..."
+  },
+  "items": [
+    {
+      "id": "uuid",
+      "contentType": "recipe",
+      "contentId": "uuid",
+      "title": "Classic Chrome Street",
+      "coverImageUrl": "https://...",
+      "addedAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "itemCount": 12,
+  "favoriteCount": 18,
+  "isFavorited": false,
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 403 | `FORBIDDEN` | Private collection, not the owner |
+| 404 | `NOT_FOUND` | Collection not found |

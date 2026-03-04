@@ -1,0 +1,19 @@
+---
+title: Following
+description: "Get users that a user is following."
+---
+
+## GET /api/users/[id]/following
+
+Returns a paginated list of users that the specified user follows.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+
+### Response (200)
+
+Same structure as the [Followers](/api-reference/users/followers) endpoint.

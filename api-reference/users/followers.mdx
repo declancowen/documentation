@@ -1,0 +1,38 @@
+---
+title: Followers
+description: "Get a user's followers."
+---
+
+## GET /api/users/[id]/followers
+
+Returns a paginated list of users who follow the specified user.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+
+### Response (200)
+
+```json
+{
+  "followers": [
+    {
+      "id": "uuid",
+      "username": "janedoe",
+      "firstName": "Jane",
+      "surname": "Doe",
+      "avatarUrl": "https://...",
+      "isFollowing": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+```

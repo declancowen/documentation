@@ -1,0 +1,66 @@
+---
+title: Get User Collections
+api: GET /api/users/{id}/collections
+description: Get collections created by a specific user.
+---
+
+## Authentication
+
+Optional. If authenticated and viewing own profile, shows both public and private collections. Otherwise only public.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | Username or UUID |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+| `all` | string | — | Set to `true` to fetch all without pagination |
+
+## Visibility Rules
+
+- Own profile: sees all collections (public + private)
+- Other users: sees only `is_public = true` collections
+
+## Response
+
+```json
+{
+  "collections": [
+    {
+      "id": "uuid",
+      "name": "Street Photography",
+      "description": "My favorite street recipes",
+      "coverImageUrl": "https://...",
+      "previewImages": ["https://..."],
+      "recipeCount": 8,
+      "isPublic": true,
+      "favoriteCount": 12,
+      "commentCount": 0,
+      "repostCount": 2,
+      "isFavorited": false,
+      "isReposted": false,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "updatedAt": "2025-01-20T14:00:00Z",
+      "author": {
+        "id": "uuid",
+        "username": "filmshooter",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 12,
+    "total": 3,
+    "totalPages": 1
+  }
+}
+```
+
+Cover images are derived from the most recently added saved item's content (recipe or post cover image).

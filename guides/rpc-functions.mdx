@@ -1,0 +1,282 @@
+---
+title: RPC Functions
+description: "PostgreSQL functions used for complex queries and atomic operations."
+---
+
+## Overview
+
+Recipe Room uses Supabase RPC (Remote Procedure Call) functions for operations that require multiple queries, atomic transactions, or complex joins. These are defined as PostgreSQL functions in `supabase/migrations/`.
+
+## Content Listing Functions
+
+### get_discover_content_list
+
+Fetches mixed content (recipes + posts) for the discover feed.
+
+```sql
+get_discover_content_list(
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0,
+  p_sort text DEFAULT 'recent',
+  p_current_user_id uuid DEFAULT NULL
+) → json
+```
+
+Sort options: `recent`, `trending`, `popular`. Returns interleaved recipes and posts with author info, favorite/repost status, and images.
+
+### get_follow_content_list
+
+Fetches content from users the current user follows.
+
+```sql
+get_follow_content_list(
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0,
+  p_current_user_id uuid DEFAULT NULL
+) → json
+```
+
+### get_posts_list / get_recipes_list / get_collections_list
+
+Dedicated listing functions for each content type with sorting and pagination.
+
+```sql
+get_posts_list(p_limit, p_offset, p_sort, p_current_user_id) → json
+get_recipes_list(p_limit, p_offset, p_sort, p_current_user_id) → json
+get_collections_list(p_limit, p_offset, p_current_user_id) → json
+```
+
+<Note>
+  `get_recipes_list` is defined but not yet implemented. Recipe listing currently uses the `recipe_with_stats` view directly.
+</Note>
+
+## Detail Functions
+
+### get_recipe_detail
+
+```sql
+get_recipe_detail(
+  p_recipe_id uuid,
+  p_current_user_id uuid DEFAULT NULL
+) → json
+```
+
+Returns complete recipe data: settings, images, tags, tagged users, lightroom settings, author info, favorite/repost status, and comments.
+
+### get_post_detail
+
+```sql
+get_post_detail(
+  p_post_id uuid,
+  p_current_user_id uuid DEFAULT NULL
+) → json
+```
+
+Returns post with images, tags, linked recipe/collection, author info, and engagement status.
+
+### get_collection_detail
+
+```sql
+get_collection_detail(
+  p_collection_id uuid,
+  p_current_user_id uuid DEFAULT NULL,
+  p_item_limit integer DEFAULT 20,
+  p_item_offset integer DEFAULT 0
+) → json
+```
+
+Returns collection with paginated saved items (enriched with content details), author info, and engagement status.
+
+## Profile Functions
+
+### get_user_profile_data
+
+The main profile endpoint — replaces 5+ API calls with one database round-trip.
+
+```sql
+get_user_profile_data(
+  p_username text,
+  p_current_user_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 8,
+  p_offset integer DEFAULT 0
+) → json
+```
+
+Returns: user profile, recipes, posts, collections, follow status, and engagement counts.
+
+### get_user_profile_data_by_id
+
+Same as `get_user_profile_data` but accepts a UUID instead of username. Used when you have the user ID but not the username (e.g., from a notification or follow relationship).
+
+```sql
+get_user_profile_data_by_id(
+  p_user_id uuid,
+  p_current_user_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 8,
+  p_offset integer DEFAULT 0
+) → json
+```
+
+### get_user_profile_collections / get_user_profile_collections_by_id
+
+Fetch just the collections for a user profile. Used for paginated collection loading on profile pages without re-fetching the full profile.
+
+```sql
+get_user_profile_collections(
+  p_username text,
+  p_current_user_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 8,
+  p_offset integer DEFAULT 0
+) → json
+
+get_user_profile_collections_by_id(
+  p_user_id uuid,
+  p_current_user_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 8,
+  p_offset integer DEFAULT 0
+) → json
+```
+
+## Social Functions
+
+### get_user_followers / get_user_following
+
+```sql
+get_user_followers(p_user_id, p_current_user_id, p_limit, p_offset) → json
+get_user_following(p_user_id, p_current_user_id, p_limit, p_offset) → json
+```
+
+Returns follower/following lists with `isFollowing` status for the current user.
+
+### get_notifications
+
+```sql
+get_notifications(
+  p_user_id uuid,
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0
+) → json
+```
+
+Returns notifications with actor info, grouped by type.
+
+## Comment Functions
+
+### create_post_comment / create_recipe_comment
+
+Atomic comment creation that returns the comment with author info.
+
+```sql
+create_post_comment(p_post_id uuid, p_user_id uuid, p_content text)
+  → TABLE(out_comment_id, out_content, out_created_at, out_user_id, out_username, out_avatar_url)
+```
+
+### get_comments
+
+Generic comment fetcher for any content type.
+
+```sql
+get_comments(
+  p_content_type text,  -- 'post', 'recipe', or 'collection'
+  p_content_id uuid,
+  p_limit integer DEFAULT 20,
+  p_offset integer DEFAULT 0
+) → TABLE(id, content, created_at, user_id, username, avatar_url, total_count)
+```
+
+### delete_post_comment / delete_recipe_comment
+
+Deletes a comment if the user is the author.
+
+## CRUD Functions
+
+### create_recipe
+
+Atomic recipe creation handling images, tags, tagged users, collection assignment, and optional Lightroom settings in a single transaction.
+
+```sql
+create_recipe(
+  p_user_id, p_title, p_description, p_camera_model,
+  p_images text[], p_cover_index, p_tags text[], p_tagged_user_ids uuid[],
+  p_collection_id, p_film_simulation, p_dynamic_range, p_grain_effect,
+  p_color_chrome_effect, p_color_chrome_effect_blue,
+  p_white_balance_mode, p_white_balance_kelvin, p_white_balance_red, p_white_balance_blue,
+  p_highlight, p_shadow, p_color, p_sharpness, p_noise_reduction, p_clarity,
+  p_include_lightroom, p_lr_exposure, p_lr_contrast, p_lr_highlights, ...
+) → TABLE(id, title, description, ...)
+```
+
+### update_recipe
+
+Same parameter set as create, updates only provided fields.
+
+### create_post / update_post / delete_post / delete_recipe
+
+Similar atomic operations for posts and soft-delete operations.
+
+### delete_user_account
+
+Cascading account deletion that removes all user data.
+
+```sql
+delete_user_account(p_user_id uuid) → void
+```
+
+## Saved Items Functions
+
+### get_saved_page_data
+
+Fetches the saved page overview for a user.
+
+### get_uncategorized_saved_items
+
+Gets saved items not in any collection.
+
+### get_user_collections_for_save_modal
+
+Returns user's collections with preview images and whether a specific saved item is in each collection.
+
+```sql
+get_user_collections_for_save_modal(
+  p_user_id uuid,
+  p_saved_item_id uuid DEFAULT NULL
+) → TABLE(id, name, is_public, preview_image_url, item_count, is_in_collection)
+```
+
+## Search
+
+### global_search
+
+Full-text search across recipes, posts, collections, and users using `pg_trgm`.
+
+```sql
+global_search(
+  p_query text,
+  p_type_filter text DEFAULT NULL,  -- 'recipe', 'post', 'collection', 'user'
+  p_limit integer DEFAULT 30
+) → json
+```
+
+### check_username_available
+
+```sql
+check_username_available(
+  p_username text,
+  p_exclude_user_id uuid DEFAULT NULL
+) → boolean
+```
+
+## Utility Functions
+
+### update_user_profile
+
+Atomic profile update.
+
+### validate_all_counters
+
+Diagnostic function that compares denormalized counter values against actual counts. Returns mismatches.
+
+```sql
+validate_all_counters()
+  → TABLE(table_name, record_id, counter_name, counter_value, actual_value)
+```

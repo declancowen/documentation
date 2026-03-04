@@ -1,0 +1,53 @@
+---
+title: Get Save Status
+api: GET /api/saved-items/status
+description: Check the complete save status of an item for the current user.
+---
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `content_type` | string | Yes | `post`, `recipe`, or `collection` |
+| `content_id` | UUID | Yes | The content ID to check |
+
+## Response
+
+```json
+{
+  "isStandaloneSaved": false,
+  "savedItemId": "uuid",
+  "collections": [
+    {
+      "id": "uuid",
+      "name": "My Favorites",
+      "is_public": true
+    }
+  ]
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `isStandaloneSaved` | `true` if saved but NOT in any collection |
+| `savedItemId` | The saved_item UUID, or `null` if not saved |
+| `collections` | Array of collections containing this item |
+
+## Standalone Logic
+
+An item is "standalone saved" when:
+1. It has a `saved_items` record, AND
+2. It is NOT in any collections
+
+This distinction powers the save modal UI where users can save items to specific collections or just bookmark them.
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Missing or invalid parameters |
+| 401 | `UNAUTHORIZED` | Not authenticated |

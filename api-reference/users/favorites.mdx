@@ -1,0 +1,53 @@
+---
+title: Get User Favorites
+api: GET /api/users/{id}/favorites
+description: Get content favorited by a specific user, filterable by type.
+---
+
+## Authentication
+
+Optional. If authenticated, includes repost status.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | Username or UUID |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+| `type` | string | `recipes` | Content type: `recipes`, `posts`, or `collections` |
+
+## Response (type=recipes)
+
+```json
+{
+  "recipes": [
+    {
+      "id": "uuid",
+      "title": "Kodak Portra 400",
+      "coverImageUrl": "https://...",
+      "filmSimulation": "Classic Chrome",
+      "favoriteCount": 42,
+      "commentCount": 5,
+      "repostCount": 3,
+      "isFavorited": true,
+      "isReposted": false,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "favoritedAt": "2025-01-20T14:00:00Z",
+      "author": {
+        "id": "uuid",
+        "username": "creator",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "pagination": { ... }
+}
+```
+
+When viewing your own favorites, `isFavorited` is always `true` by definition.

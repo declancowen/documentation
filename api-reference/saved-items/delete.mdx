@@ -1,0 +1,37 @@
+---
+title: Unsave Item
+api: DELETE /api/saved-items/{id}
+description: Remove a saved item. Cascades removal from all collections.
+---
+
+## Authentication
+
+Requires authentication. Only the owner can unsave their items.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | The saved item ID |
+
+## Behavior
+
+- Deletes the saved item record.
+- Cascades: removes the item from all `collection_saved_items` entries first.
+- This means unsaving removes the item from every collection it belongs to.
+
+## Response (200)
+
+```json
+{
+  "success": true
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not the owner |
+| 404 | `NOT_FOUND` | Saved item not found |

@@ -1,0 +1,58 @@
+---
+title: Get User Recipes
+api: GET /api/users/{id}/recipes
+description: Get recipes created by a specific user.
+---
+
+## Authentication
+
+Optional. If authenticated, includes `isFavorited` and `isReposted` statuses.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | Username or UUID |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+
+## Response
+
+```json
+{
+  "recipes": [
+    {
+      "id": "uuid",
+      "title": "Classic Chrome Street",
+      "description": "Muted tones for urban photography",
+      "coverImageUrl": "https://...",
+      "cameraModel": "X-T5",
+      "filmSimulation": "Classic Chrome",
+      "favoriteCount": 24,
+      "commentCount": 5,
+      "repostCount": 3,
+      "isFavorited": false,
+      "isReposted": false,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "author": {
+        "id": "uuid",
+        "username": "filmshooter",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 12,
+    "total": 40,
+    "totalPages": 4
+  }
+}
+```
+
+Resolves username to UUID automatically. Falls back to `recipe_images` for cover images when `cover_image_url` is null.

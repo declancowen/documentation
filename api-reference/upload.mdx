@@ -1,0 +1,48 @@
+---
+title: Image Upload
+description: "Upload images to Supabase Storage."
+---
+
+## POST /api/upload/image
+
+Uploads an image to the appropriate Supabase Storage bucket.
+
+<Note>Requires authentication.</Note>
+
+### Request Body (multipart/form-data)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | File | Yes | Image file (max 5MB) |
+| `type` | string | Yes | `avatar`, `cover`, `recipe`, or `post` |
+
+### Accepted Formats
+
+- `image/jpeg`
+- `image/png`
+- `image/webp`
+
+### Response (201)
+
+```json
+{
+  "url": "https://storage.supabase.co/...",
+  "path": "avatars/uuid/image.jpg"
+}
+```
+
+### Storage Buckets
+
+| Type | Bucket | Folder Structure |
+|------|--------|-----------------|
+| `avatar` | `avatars` | `{user_id}/avatar.jpg` |
+| `cover` | `covers` | `{user_id}/cover.jpg` |
+| `recipe` | `recipe-images` | `{user_id}/{image_id}.jpg` |
+| `post` | `post-images` | `{user_id}/{image_id}.jpg` |
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Invalid file type or too large |
+| 401 | `UNAUTHORIZED` | Not authenticated |

@@ -1,0 +1,39 @@
+---
+title: Create Collection
+description: "Create a new collection."
+---
+
+## POST /api/collections
+
+Creates a new collection. Collections are created via the save modal when saving content.
+
+<Note>Requires authentication.</Note>
+
+### Request Body
+
+```json
+{
+  "name": "Tokyo Street Recipes",
+  "description": "My favorite street photography settings",
+  "isPublic": true
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Collection name |
+| `description` | string | No | Description |
+| `isPublic` | boolean | No | Default: true |
+
+### Response (201)
+
+```json
+{
+  "message": "Collection created successfully",
+  "collection": {
+    "id": "uuid",
+    "name": "Tokyo Street Recipes",
+    ...
+  }
+}
+```

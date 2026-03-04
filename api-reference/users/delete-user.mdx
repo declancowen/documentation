@@ -1,0 +1,27 @@
+---
+title: Delete User
+description: "Delete the current user's account."
+---
+
+## DELETE /api/users/[id]
+
+Permanently deletes the authenticated user's account. Also removes the user from Loops.so.
+
+<Warning>This action is irreversible. The client should show a confirmation modal before calling this endpoint.</Warning>
+
+<Note>Requires authentication. User can only delete their own account.</Note>
+
+### Response (200)
+
+```json
+{
+  "message": "Account deleted successfully"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not your account |

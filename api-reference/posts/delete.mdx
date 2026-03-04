@@ -1,0 +1,20 @@
+---
+title: Delete Post
+description: "Delete a post."
+---
+
+## DELETE /api/posts/[id]
+
+Soft-deletes a post. Only the post owner can delete it.
+
+<Warning>The client should show a confirmation modal before calling this endpoint.</Warning>
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Response (200)
+
+```json
+{
+  "message": "Post deleted successfully"
+}
+```

@@ -1,0 +1,33 @@
+---
+title: Featured Collections
+api: GET /api/collections/featured
+description: Get the most popular collections for the discover page.
+---
+
+## Authentication
+
+Optional. If authenticated, includes `isFavorited` status.
+
+## Response
+
+```json
+{
+  "collections": [
+    {
+      "id": "uuid",
+      "name": "Street Photography Recipes",
+      "description": "Best recipes for urban shooting",
+      "user_id": "uuid",
+      "author_username": "curator",
+      "author_avatar": "https://...",
+      "recipe_count": 12,
+      "favorite_count": 35,
+      "is_public": true,
+      "is_favorited": false,
+      "created_at": "2025-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+Returns up to 6 collections, ordered by `favorite_count` descending, filtered to collections with at least one recipe.

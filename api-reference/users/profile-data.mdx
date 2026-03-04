@@ -1,0 +1,60 @@
+---
+title: Get Profile Data
+api: GET /api/users/{id}/profile-data
+description: Optimized endpoint that fetches all profile data in a single RPC call.
+---
+
+## Authentication
+
+Optional. If authenticated, includes `isFollowing` and `isFavorited` statuses.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | Username (not UUID) |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 50 | Max items per content type |
+
+## How It Works
+
+This endpoint calls the `get_user_profile_data` RPC function, which replaces 5+ separate API calls with a single database round-trip. It returns the user's profile, recipes, posts, collections, and follow status all at once.
+
+## Response
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "username": "filmshooter",
+    "firstName": "John",
+    "surname": "Doe",
+    "bio": "Fujifilm X-T5 shooter",
+    "location": "Tokyo",
+    "avatarUrl": "https://...",
+    "coverPhotoUrl": "https://...",
+    "instagramHandle": "filmshooter",
+    "followerCount": 150,
+    "followingCount": 42,
+    "recipeCount": 12,
+    "postCount": 25,
+    "collectionCount": 3,
+    "isFollowing": false
+  },
+  "recipes": [...],
+  "posts": [...],
+  "collections": [...]
+}
+```
+
+## Caching
+
+Response includes `Cache-Control: public, s-maxage=30, stale-while-revalidate=60`.
+
+## Fallback
+
+If the RPC function doesn't exist (error code `42883`), returns `501` to trigger client-side fallback to individual API calls.

@@ -1,0 +1,39 @@
+---
+title: Login
+description: "Authenticate an existing user."
+---
+
+## POST /api/auth/login
+
+Authenticates a user with email and password via Supabase Auth.
+
+### Request Body
+
+```json
+{
+  "email": "[email]",
+  "password": "securePassword123"
+}
+```
+
+### Response (200)
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "[email]",
+    "username": "johndoe"
+  },
+  "session": {
+    "accessToken": "jwt-token",
+    "expiresAt": 1234567890
+  }
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 401 | `UNAUTHORIZED` | Invalid credentials |

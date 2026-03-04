@@ -1,0 +1,37 @@
+---
+title: Toggle Recipe Repost
+api: POST /api/recipes/{id}/repost
+description: Repost or unrepost a recipe. Acts as a toggle.
+---
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | The recipe ID |
+
+## Behavior
+
+- If not reposted: creates a `recipe_reposts` record.
+- If already reposted: deletes the record (unrepost).
+- The `repost_count` on the recipe is updated automatically by a database trigger.
+
+## Response
+
+```json
+{
+  "message": "Recipe reposted",
+  "isReposted": true
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 404 | `NOT_FOUND` | Recipe not found or deleted |

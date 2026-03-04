@@ -1,0 +1,55 @@
+---
+title: Save Item
+api: POST /api/saved-items
+description: Save a post, recipe, or collection. Optionally add to a collection.
+---
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request Body
+
+```json
+{
+  "content_type": "recipe",
+  "content_id": "uuid",
+  "collection_id": "uuid"  // optional
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `content_type` | string | Yes | `post`, `recipe`, or `collection` |
+| `content_id` | string | Yes | UUID of the content to save |
+| `collection_id` | string | No | UUID of collection to add to |
+
+## Behavior
+
+- If the item is already saved and `collection_id` is provided, it adds the existing saved item to the collection.
+- If the item is already saved without `collection_id`, returns `409 ALREADY_SAVED`.
+- Cannot add a collection to itself (self-referential check).
+- Validates that the content exists and is not soft-deleted.
+
+## Response (201)
+
+```json
+{
+  "savedItem": {
+    "id": "uuid",
+    "content_type": "recipe",
+    "content_id": "uuid",
+    "user_id": "uuid",
+    "created_at": "2025-01-15T10:30:00Z"
+  },
+  "addedToCollection": true
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Invalid data or content not found |
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 409 | `ALREADY_SAVED` | Item already saved (no collection_id) |

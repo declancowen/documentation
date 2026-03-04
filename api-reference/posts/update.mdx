@@ -1,0 +1,32 @@
+---
+title: Update Post
+description: "Update an existing post."
+---
+
+## PATCH /api/posts/[id]
+
+Updates a post. Only the post owner can update it. All fields are optional.
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Request Body
+
+Same fields as [Create Post](/api-reference/posts/create), all optional. Images cannot be updated after creation.
+
+### Response (200)
+
+```json
+{
+  "message": "Post updated successfully",
+  "post": { ... }
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Invalid fields |
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not the post owner |
+| 404 | `NOT_FOUND` | Post not found |

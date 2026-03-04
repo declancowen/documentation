@@ -1,0 +1,59 @@
+---
+title: Creators
+api: GET /api/creators
+description: List creators (users) with sorting by recent, trending, or popular.
+---
+
+## Authentication
+
+Optional. If authenticated, includes `isFollowing` status.
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+| `sort` | string | `recent` | Sort order: `recent`, `trending`, or `popular` |
+
+## Sort Options
+
+| Sort | Description |
+|------|-------------|
+| `recent` | Newest accounts first |
+| `popular` | Most total likes (recipes + posts + collections) |
+| `trending` | Most engagement in the last 12 hours |
+
+The trending algorithm counts favorites received across all content types within a 12-hour window, with total likes as a tiebreaker.
+
+## Response
+
+```json
+{
+  "creators": [
+    {
+      "id": "uuid",
+      "username": "filmshooter",
+      "firstName": "John",
+      "surname": "Doe",
+      "avatarUrl": "https://...",
+      "followerCount": 150,
+      "totalLikes": 420,
+      "createdAt": "2025-01-01T00:00:00Z",
+      "isFollowing": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 12,
+    "total": 6,
+    "totalPages": 1
+  }
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Invalid sort or pagination params |

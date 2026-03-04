@@ -1,0 +1,75 @@
+---
+title: Collection Comments
+api: GET /api/collections/{id}/comments
+description: List and create comments on a collection. Supports @mentions.
+---
+
+## List Comments
+
+<code>GET /api/collections/{id}/comments</code>
+
+No authentication required.
+
+### Response
+
+```json
+{
+  "comments": [
+    {
+      "id": "uuid",
+      "content": "Great curation!",
+      "createdAt": "2025-01-15T10:30:00Z",
+      "author": {
+        "id": "uuid",
+        "username": "fujifilmfan",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "total": 3
+}
+```
+
+## Create Comment
+
+<code>POST /api/collections/{id}/comments</code>
+
+Requires authentication.
+
+### Request Body
+
+```json
+{
+  "content": "Amazing collection @curator"
+}
+```
+
+### Mention Handling
+
+Same pattern as post and recipe comments — `@username` mentions are parsed, stored in `collection_comment_mentions`, and trigger notifications via database triggers.
+
+### Response (201)
+
+```json
+{
+  "message": "Comment added successfully",
+  "comment": {
+    "id": "uuid",
+    "content": "Amazing collection @curator",
+    "createdAt": "2025-01-15T10:30:00Z",
+    "author": {
+      "id": "uuid",
+      "username": "currentuser",
+      "avatarUrl": "https://..."
+    }
+  }
+}
+```
+
+### Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Invalid comment content |
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 404 | `NOT_FOUND` | Collection not found or deleted |

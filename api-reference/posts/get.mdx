@@ -1,0 +1,48 @@
+---
+title: Get Post
+description: "Get a single post with full details."
+---
+
+## GET /api/posts/[id]
+
+Returns a post with images, tags, author info, and comment count.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Post ID |
+
+### Response (200)
+
+```json
+{
+  "id": "uuid",
+  "title": "Golden hour in Tokyo",
+  "caption": "Shot on Classic Chrome with the X-T5",
+  "cameraModel": "X-T5",
+  "filmSimulation": "Classic Chrome",
+  "coverImageUrl": "https://...",
+  "recipeId": "uuid or null",
+  "author": {
+    "id": "uuid",
+    "username": "johndoe",
+    "avatarUrl": "https://..."
+  },
+  "tags": ["street", "golden-hour", "tokyo"],
+  "images": [
+    { "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 1 }
+  ],
+  "favoriteCount": 28,
+  "commentCount": 5,
+  "isFavorited": false,
+  "isSaved": false,
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 404 | `NOT_FOUND` | Post not found or deleted |

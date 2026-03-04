@@ -1,0 +1,79 @@
+---
+title: Database Triggers
+description: "Automatic counter updates and notification triggers."
+---
+
+## Overview
+
+Recipe Room uses PostgreSQL triggers to maintain denormalized counters and create notifications automatically. This avoids manual counter management in application code and ensures data consistency.
+
+## Counter Triggers
+
+All counter triggers fire on INSERT and DELETE to keep denormalized counts in sync.
+
+### Profile Counters
+
+| Trigger | Table | Updates |
+|---------|-------|---------|
+| `update_follow_counts` | `follows` | `profiles.follower_count`, `profiles.following_count` |
+| `update_profile_recipe_count` | `recipes` | `profiles.recipe_count` |
+| `update_profile_post_count` | `posts` | `profiles.post_count` |
+| `update_profile_collection_count` | `collections` | `profiles.collection_count` |
+
+### Content Counters
+
+| Trigger | Table | Updates |
+|---------|-------|---------|
+| `update_recipe_favorite_count` | `recipe_favorites` | `recipes.favorite_count` |
+| `update_recipe_comment_count` | `recipe_comments` | `recipes.comment_count` |
+| `update_recipe_repost_count` | `recipe_reposts` | `recipes.repost_count` |
+| `update_post_favorite_count` | `post_favorites` | `posts.favorite_count` |
+| `update_post_comment_count` | `post_comments` | `posts.comment_count` |
+| `update_post_repost_count` | `post_reposts` | `posts.repost_count` |
+| `update_collection_item_count` | `collection_saved_items` | `collections.item_count` |
+
+### Timestamp Trigger
+
+| Trigger | Tables | Updates |
+|---------|--------|---------|
+| `update_updated_at_column` | `profiles`, `recipes`, `posts`, `collections`, `lightroom_settings` | `updated_at` |
+
+## Notification Triggers
+
+Notifications are created automatically when users are tagged or mentioned.
+
+| Trigger | Fires On | Notification Type |
+|---------|----------|-------------------|
+| `create_post_tag_notification` | `post_tagged_users` INSERT | `tag_post` |
+| `create_recipe_tag_notification` | `recipe_tagged_users` INSERT | `tag_recipe` |
+| `create_post_comment_mention_notification` | `post_comment_mentions` INSERT | `mention_post_comment` |
+| `create_recipe_comment_mention_notification` | `recipe_comment_mentions` INSERT | `mention_recipe_comment` |
+
+<Note>
+  Three collection-related trigger functions exist in the database but are orphaned (no active trigger invokes them): `create_collection_comment_mention_notification`, `create_collection_tag_notification`, and `delete_collection_tag_notification`. These were left behind when collection social features were removed. They are safe to drop.
+</Note>
+
+### Cleanup Triggers
+
+| Trigger | Fires On | Action |
+|---------|----------|--------|
+| `delete_post_tag_notification` | `post_tagged_users` DELETE | Removes associated notification |
+| `delete_recipe_tag_notification` | `recipe_tagged_users` DELETE | Removes associated notification |
+| `delete_saved_items_on_post_delete` | `posts` UPDATE (is_deleted) | Removes saved items for deleted post |
+| `delete_saved_items_on_recipe_delete` | `recipes` UPDATE (is_deleted) | Removes saved items for deleted recipe |
+
+### Auth Trigger
+
+| Trigger | Fires On | Action |
+|---------|----------|--------|
+| `handle_new_user` | `auth.users` INSERT | Creates a `profiles` row for new signups |
+
+## Counter Validation
+
+Use the `validate_all_counters()` function to check for drift between denormalized counters and actual counts:
+
+```sql
+SELECT * FROM validate_all_counters();
+```
+
+Returns rows only where `counter_value != actual_value`, making it easy to spot and fix inconsistencies.
