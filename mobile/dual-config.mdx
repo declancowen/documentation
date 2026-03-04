@@ -1,0 +1,229 @@
+---
+title: Dual Configuration
+description: "How the Recipe Room mobile app supports both Expo Go development and EAS production builds with a single codebase."
+---
+
+## Overview
+
+The mobile app runs in two distinct modes from the same codebase:
+
+| Mode | Tool | Use Case |
+|------|------|----------|
+| Development | Expo Go | Fast iteration, no native build required |
+| Production | EAS Build | App Store builds, custom native modules |
+
+This is controlled by the `EXPO_CONFIG_MODE` environment variable and a custom `app.config.js` that transforms the base `app.json` depending on the mode.
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────┐
+│                  app.json                    │
+│         (base Expo configuration)            │
+└──────────────────┬──────────────────────────┘
+                   │
+            app.config.js
+           reads EXPO_CONFIG_MODE
+                   │
+        ┌──────────┴──────────┐
+        ▼                     ▼
+  development              production
+  (Expo Go)               (EAS Build)
+  - No EAS updates        - Full EAS config
+  - No runtimeVersion     - expo-updates enabled
+  - No project binding    - Project ID bound
+  - isExpoGo: true        - isExpoGo: false
+```
+
+## app.config.js
+
+The dynamic config file reads `app.json` as a base and strips EAS-specific properties when running in development mode:
+
+```javascript
+const IS_DEV = process.env.EXPO_CONFIG_MODE === 'development';
+
+function transformConfig(baseConfig, isDev) {
+  if (isDev) {
+    return {
+      ...baseConfig,
+      updates: undefined,        // Remove EAS updates
+      runtimeVersion: undefined, // Remove runtime version
+      extra: {
+        ...baseConfig.extra,
+        eas: undefined,          // Remove EAS project binding
+        isExpoGo: true,
+      },
+    };
+  }
+
+  return {
+    ...baseConfig,
+    extra: {
+      ...baseConfig.extra,
+      isExpoGo: false,
+    },
+  };
+}
+```
+
+Properties like `updates`, `runtimeVersion`, and `extra.eas` cause errors in Expo Go because they reference EAS-specific infrastructure that doesn't exist in the Expo Go client.
+
+## NPM Scripts
+
+The `package.json` scripts set the environment variable automatically:
+
+```json
+{
+  "dev": "EXPO_CONFIG_MODE=development expo start",
+  "dev:tunnel": "EXPO_CONFIG_MODE=development expo start --tunnel",
+  "dev:lan": "EXPO_CONFIG_MODE=development expo start --lan",
+  "start:eas": "EXPO_CONFIG_MODE=production expo start"
+}
+```
+
+Use `pnpm dev:mobile` from the monorepo root for daily development with Expo Go.
+
+## Metro Configuration
+
+The custom `metro.config.js` handles the monorepo structure so Metro can resolve packages from both the local `apps/mobile/node_modules` and the root `node_modules`:
+
+```javascript
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// Watch the shared package for live changes
+config.watchFolders = [
+  path.resolve(monorepoRoot, 'packages/shared'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
+// Resolve from both local and root node_modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+```
+
+### Expo Package Resolution
+
+A custom `resolveRequest` function ensures expo packages resolve correctly in the monorepo. It checks the local `node_modules` first, then falls back to the root:
+
+```javascript
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName.startsWith('expo') || moduleName.startsWith('@expo')) {
+    const localPath = path.join(projectRoot, 'node_modules', moduleName);
+    const rootPath = path.join(monorepoRoot, 'node_modules', moduleName);
+
+    if (fs.existsSync(localPath)) {
+      return context.resolveRequest(context, moduleName, platform);
+    } else if (fs.existsSync(rootPath)) {
+      return {
+        type: 'sourceFile',
+        filePath: require.resolve(moduleName, { paths: [monorepoRoot] }),
+      };
+    }
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+```
+
+### Polyfills & NativeWind
+
+Metro is also configured with:
+- Buffer and process polyfills for Supabase compatibility
+- Additional source extensions (`.mjs`, `.cjs`)
+- NativeWind integration via `withNativeWind` wrapper
+
+```javascript
+config.resolver.extraNodeModules = {
+  'buffer': require.resolve('buffer/'),
+  'process': require.resolve('process/browser'),
+};
+
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
+
+module.exports = withNativeWind(config, { input: './src/global.css' });
+```
+
+## EAS Build Profiles
+
+The `eas.json` defines three build profiles that all extend a shared `base`:
+
+<CodeGroup>
+```json base
+{
+  "node": "20.18.3",
+  "env": {
+    "EXPO_USE_FAST_RESOLVER": "1"
+  }
+}
+```
+
+```json development
+{
+  "extends": "base",
+  "developmentClient": true,
+  "distribution": "internal",
+  "ios": { "simulator": true }
+}
+```
+
+```json preview
+{
+  "extends": "base",
+  "distribution": "internal",
+  "ios": { "simulator": false }
+}
+```
+
+```json production
+{
+  "extends": "base",
+  "distribution": "store",
+  "channel": "production",
+  "ios": {
+    "buildConfiguration": "Release",
+    "resourceClass": "m-medium",
+    "autoIncrement": "buildNumber"
+  }
+}
+```
+</CodeGroup>
+
+| Profile | Distribution | Use Case |
+|---------|-------------|----------|
+| `development` | Internal (simulator) | Local dev client builds |
+| `preview` | Internal (device) | TestFlight / team testing |
+| `production` | App Store | Release builds with auto-incrementing build numbers |
+
+## Build Commands
+
+```bash
+# Development build (simulator)
+pnpm mobile:build:dev
+
+# Preview build (TestFlight)
+pnpm mobile:build:preview
+
+# Production build
+pnpm mobile:build
+
+# Production build + auto-submit to App Store
+eas build --profile production --platform ios --auto-submit
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Expo Go shows 'invariant violation' or EAS-related errors">
+    Make sure `EXPO_CONFIG_MODE=development` is set. The `pnpm dev:mobile` script does this automatically. If running `expo start` directly, prefix with the env var.
+  </Accordion>
+  <Accordion title="Metro can't resolve a package from the shared workspace">
+    Check that `packages/shared` is listed in `config.watchFolders` in `metro.config.js` and that the package is properly linked via pnpm workspaces.
+  </Accordion>
+  <Accordion title="EAS build fails with module resolution errors">
+    The `EXPO_USE_FAST_RESOLVER` env var in `eas.json` base profile enables the fast resolver. If a specific package fails, you may need to add it to `extraNodeModules` in `metro.config.js`.
+  </Accordion>
+</AccordionGroup>

@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Recipe Room",
   "colors": {
-    "primary": "#1A1A1A",
-    "light": "#E8927C",
-    "dark": "#C75B3F"
+    "primary": "#16A34A",
+    "light": "#4ADE80",
+    "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -53,6 +53,7 @@
             "pages": [
               "mobile/overview",
               "mobile/setup",
+              "mobile/dual-config",
               "mobile/building"
             ]
           }
@@ -177,7 +178,7 @@
     "primary": {
       "type": "button",
       "label": "Recipe Room",
-      "href": "https://recipe-room.vercel.app"
+      "href": "https://reciperoom.io"
     }
   },
   "footer": {
