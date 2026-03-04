@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Recipe Room",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1A1A1A",
+    "light": "#E8927C",
+    "dark": "#C75B3F"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -14,55 +14,146 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "project-structure"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Architecture",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "architecture/overview",
+              "architecture/state-management",
+              "architecture/security"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Database",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "database/schema",
+              "database/supabase-setup",
+              "database/rls-policies"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Deep Dives",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/shared-package",
+              "guides/rpc-functions",
+              "guides/triggers",
+              "guides/coding-conventions",
+              "guides/testing",
+              "guides/deployment"
+            ]
+          },
+          {
+            "group": "Mobile App",
+            "pages": [
+              "mobile/overview",
+              "mobile/setup",
+              "mobile/building"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Authentication",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/auth/register",
+              "api-reference/auth/login",
+              "api-reference/auth/logout"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/me",
+              "api-reference/users/get-user",
+              "api-reference/users/update-user",
+              "api-reference/users/delete-user",
+              "api-reference/users/follow",
+              "api-reference/users/followers",
+              "api-reference/users/following",
+              "api-reference/users/profile-data",
+              "api-reference/users/recipes",
+              "api-reference/users/collections",
+              "api-reference/users/favorites",
+              "api-reference/users/saved-items",
+              "api-reference/users/reposts",
+              "api-reference/users/search-users"
+            ]
+          },
+          {
+            "group": "Recipes",
+            "pages": [
+              "api-reference/recipes/list",
+              "api-reference/recipes/create",
+              "api-reference/recipes/get",
+              "api-reference/recipes/update",
+              "api-reference/recipes/delete",
+              "api-reference/recipes/favorite",
+              "api-reference/recipes/repost",
+              "api-reference/recipes/comments",
+              "api-reference/recipes/featured"
+            ]
+          },
+          {
+            "group": "Posts",
+            "pages": [
+              "api-reference/posts/list",
+              "api-reference/posts/create",
+              "api-reference/posts/get",
+              "api-reference/posts/update",
+              "api-reference/posts/delete",
+              "api-reference/posts/favorite",
+              "api-reference/posts/repost",
+              "api-reference/posts/comments",
+              "api-reference/posts/featured"
+            ]
+          },
+          {
+            "group": "Collections",
+            "pages": [
+              "api-reference/collections/list",
+              "api-reference/collections/create",
+              "api-reference/collections/get",
+              "api-reference/collections/update",
+              "api-reference/collections/delete",
+              "api-reference/collections/items",
+              "api-reference/collections/repost",
+              "api-reference/collections/comments",
+              "api-reference/collections/featured"
+            ]
+          },
+          {
+            "group": "Saved Items",
+            "pages": [
+              "api-reference/saved-items/list",
+              "api-reference/saved-items/save",
+              "api-reference/saved-items/get",
+              "api-reference/saved-items/delete",
+              "api-reference/saved-items/status",
+              "api-reference/saved-items/toggle-standalone"
+            ]
+          },
+          {
+            "group": "Other",
+            "pages": [
+              "api-reference/creators",
+              "api-reference/upload",
+              "api-reference/search",
+              "api-reference/notifications"
             ]
           }
         ]
@@ -71,14 +162,9 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/declancowen",
+          "icon": "github"
         }
       ]
     }
@@ -88,35 +174,15 @@
     "dark": "/logo/dark.svg"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Recipe Room",
+      "href": "https://recipe-room.vercel.app"
     }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/declancowen"
     }
   }
 }

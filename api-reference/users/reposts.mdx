@@ -1,0 +1,51 @@
+---
+title: Get User Reposts
+api: GET /api/users/{id}/reposts
+description: Get content reposted by a specific user.
+---
+
+## Authentication
+
+Optional. If authenticated, includes favorite and repost status.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | Username or UUID |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+| `type` | string | — | Filter: `recipes`, `posts`, or `collections`. Omit for all. |
+
+## Response
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "type": "recipe",
+      "title": "Classic Chrome Street",
+      "coverImageUrl": "https://...",
+      "repostedAt": "2025-01-20T14:00:00Z",
+      "favoriteCount": 24,
+      "commentCount": 0,
+      "repostCount": 3,
+      "isFavorited": false,
+      "isReposted": true,
+      "author": {
+        "username": "originalcreator",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "pagination": { ... }
+}
+```
+
+Items are sorted by `repostedAt` descending (most recent first). When no `type` filter is set, all content types are merged and sorted together.

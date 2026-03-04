@@ -1,0 +1,34 @@
+---
+title: Favorite Post
+description: "Add or remove a post from favorites."
+---
+
+## POST /api/posts/[id]/favorite
+
+Add a post to the authenticated user's favorites.
+
+<Note>Requires authentication.</Note>
+
+### Response (201)
+
+```json
+{
+  "message": "Post added to favorites",
+  "isFavorited": true
+}
+```
+
+---
+
+## DELETE /api/posts/[id]/favorite
+
+Remove a post from favorites.
+
+### Response (200)
+
+```json
+{
+  "message": "Post removed from favorites",
+  "isFavorited": false
+}
+```

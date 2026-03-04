@@ -1,0 +1,34 @@
+---
+title: Favorite Recipe
+description: "Add or remove a recipe from favorites."
+---
+
+## POST /api/recipes/[id]/favorite
+
+Add a recipe to the authenticated user's favorites.
+
+<Note>Requires authentication.</Note>
+
+### Response (201)
+
+```json
+{
+  "message": "Recipe added to favorites",
+  "isFavorited": true
+}
+```
+
+---
+
+## DELETE /api/recipes/[id]/favorite
+
+Remove a recipe from favorites.
+
+### Response (200)
+
+```json
+{
+  "message": "Recipe removed from favorites",
+  "isFavorited": false
+}
+```

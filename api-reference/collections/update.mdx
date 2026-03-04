@@ -1,0 +1,31 @@
+---
+title: Update Collection
+description: "Update a collection."
+---
+
+## PATCH /api/collections/[id]
+
+Updates a collection. Only the owner can update it.
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Request Body
+
+All fields optional:
+
+```json
+{
+  "name": "Updated Name",
+  "description": "Updated description",
+  "isPublic": false
+}
+```
+
+### Response (200)
+
+```json
+{
+  "message": "Collection updated successfully",
+  "collection": { ... }
+}
+```

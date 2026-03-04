@@ -1,0 +1,46 @@
+---
+title: Search
+description: "Global search across all content types."
+---
+
+## GET /api/search
+
+Searches across posts, recipes, users, and collections.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `q` | — | Search query (min 2 characters) |
+| `type` | `all` | `all`, `recipes`, `posts`, `collections`, `creators` |
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+
+### Search Behavior
+
+- Multi-word queries use OR logic (matches any word across all fields)
+- Searches across: title, description/caption, tags, film simulation, camera model, author username
+- Collections: only public collections are returned
+- Results are ranked by relevance
+
+### Response (200)
+
+```json
+{
+  "recipes": [...],
+  "posts": [...],
+  "collections": [...],
+  "creators": [...],
+  "counts": {
+    "recipes": 15,
+    "posts": 23,
+    "collections": 4,
+    "creators": 2
+  },
+  "pagination": { ... }
+}
+```
+
+<Note>
+  The mobile app performs search via direct Supabase queries rather than this API endpoint, but the search logic and results are equivalent.
+</Note>

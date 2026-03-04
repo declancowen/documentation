@@ -1,0 +1,37 @@
+---
+title: Featured Recipes
+api: GET /api/recipes/featured
+description: Get recently added and most liked recipes for the discover page.
+---
+
+## Authentication
+
+Optional. If authenticated, includes `isFavorited` status.
+
+## Response
+
+```json
+{
+  "recentlyAdded": [
+    {
+      "id": "uuid",
+      "title": "Kodak Portra 400 Look",
+      "description": "Warm tones with lifted shadows",
+      "coverImageUrl": "https://...",
+      "cameraModel": "X-T5",
+      "filmSimulation": "Classic Chrome",
+      "favoriteCount": 42,
+      "isFavorited": false,
+      "createdAt": "2025-01-15T10:30:00Z",
+      "author": {
+        "id": "uuid",
+        "username": "filmshooter",
+        "avatarUrl": "https://..."
+      }
+    }
+  ],
+  "mostLiked": [...]
+}
+```
+
+Returns up to 6 recipes in each category.

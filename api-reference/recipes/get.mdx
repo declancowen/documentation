@@ -1,0 +1,59 @@
+---
+title: Get Recipe
+description: "Get a single recipe with full details."
+---
+
+## GET /api/recipes/[id]
+
+Returns a recipe with all camera settings, images, tags, and author info.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | Recipe ID |
+
+### Response (200)
+
+```json
+{
+  "id": "uuid",
+  "title": "Classic Chrome Street",
+  "description": "Moody street photography look",
+  "cameraModel": "X-T5",
+  "coverImageUrl": "https://...",
+  "filmSimulation": "Classic Chrome",
+  "dynamicRange": "DR200",
+  "grainEffect": "Weak Small",
+  "colorChromeEffect": "Strong",
+  "whiteBalanceMode": "Daylight",
+  "whiteBalanceKelvin": 5500,
+  "whiteBalanceRed": 2,
+  "whiteBalanceBlue": -3,
+  "highlight": -1,
+  "shadow": 2,
+  "color": 1,
+  "sharpness": -2,
+  "noiseReduction": -3,
+  "clarity": 0,
+  "author": {
+    "id": "uuid",
+    "username": "johndoe",
+    "avatarUrl": "https://..."
+  },
+  "tags": ["street", "moody", "urban"],
+  "images": [
+    { "id": "uuid", "imageUrl": "https://...", "isCover": true, "order": 1 }
+  ],
+  "favoriteCount": 42,
+  "isFavorited": false,
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 404 | `NOT_FOUND` | Recipe not found or deleted |

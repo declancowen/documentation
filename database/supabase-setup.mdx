@@ -1,0 +1,98 @@
+---
+title: Supabase Setup
+description: "Setting up the Supabase project for Recipe Room."
+---
+
+## Prerequisites
+
+- A Supabase project at [supabase.com](https://supabase.com)
+- Your project credentials (URL, anon key, service role key)
+
+## Database Migration
+
+<Steps>
+  <Step title="Open SQL Editor">
+    Go to your Supabase dashboard → SQL Editor → New Query.
+  </Step>
+  <Step title="Run the migration">
+    Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it. This creates all tables, indexes, views, RLS policies, storage buckets, and triggers.
+  </Step>
+  <Step title="Verify tables">
+    In Table Editor, confirm you see: `profiles`, `recipes`, `recipe_images`, `recipe_tags`, `posts`, `post_images`, `post_tags`, `collections`, `collection_saved_items`, `saved_items`, `follows`, `recipe_favorites`, `post_favorites`, `post_comments`, `recipe_comments`, `notifications`.
+  </Step>
+  <Step title="Verify views">
+    ```sql
+    SELECT * FROM pg_views WHERE schemaname = 'public';
+    ```
+    You should see `recipe_with_stats` and `collection_with_stats`.
+  </Step>
+  <Step title="Verify storage buckets">
+    Go to Storage and confirm: `avatars`, `covers`, `recipe-images`, `post-images`.
+  </Step>
+</Steps>
+
+## Storage Bucket Configuration
+
+Configure each bucket with these settings:
+
+| Bucket | Public | Max Size | MIME Types |
+|--------|--------|----------|------------|
+| `avatars` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+| `covers` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+| `recipe-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+| `post-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+
+Storage policies enforce that users can only upload to their own folder (`auth.uid()` matches the folder name).
+
+## Environment Variables
+
+**Web** (`apps/web/.env.local`):
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+LOOPS_API_KEY=your_loops_api_key
+```
+
+**Mobile** (`apps/mobile/.env`):
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
+```
+
+<Warning>
+  Never commit `.env.local` or `.env` files. They are in `.gitignore`.
+</Warning>
+
+## Using the CLI (Alternative)
+
+```bash
+npm install -g supabase
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Migration fails">
+    Check for existing tables. If needed, drop and recreate the public schema:
+    ```sql
+    DROP SCHEMA public CASCADE;
+    CREATE SCHEMA public;
+    ```
+    Then re-run the migration.
+  </Accordion>
+  <Accordion title="Can't upload images">
+    Verify storage policies exist in Storage → Policies. Check that buckets are set to public. Verify the user session is valid.
+  </Accordion>
+  <Accordion title="RLS too restrictive">
+    Check policies in Authentication → Policies. Temporarily disable RLS to test:
+    ```sql
+    ALTER TABLE table_name DISABLE ROW LEVEL SECURITY;
+    ```
+    Re-enable after debugging.
+  </Accordion>
+</AccordionGroup>

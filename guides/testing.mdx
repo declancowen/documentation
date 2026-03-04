@@ -1,0 +1,192 @@
+---
+title: Testing
+description: "Testing strategy, conventions, and property-based testing patterns in Recipe Room."
+---
+
+## Overview
+
+Recipe Room uses a two-tier testing strategy: standard unit/integration tests with Jest and React Testing Library, plus property-based tests with fast-check for correctness guarantees.
+
+## Test Stack
+
+| Tool | Purpose |
+|------|---------|
+| Jest | Test runner (web + mobile) |
+| React Testing Library | Component rendering and assertions |
+| fast-check | Property-based testing (PBT) |
+| Vitest | Shared package tests |
+
+## Running Tests
+
+```bash
+# All tests across the monorepo
+pnpm test
+
+# Web app tests
+cd apps/web && pnpm test
+
+# Mobile app tests
+cd apps/mobile && pnpm test
+
+# Shared package tests
+cd packages/shared && pnpm test
+
+# Single file
+cd apps/web && pnpm test -- --testPathPattern="error-response-format"
+```
+
+## File Locations
+
+Tests live in `__tests__/` folders adjacent to the code they test:
+
+```
+src/
+├── app/api/__tests__/                    # API-level property tests
+├── components/features/modal/SaveModal/
+│   └── __tests__/                        # Component property tests
+├── context/__tests__/                    # Context provider tests
+├── hooks/__tests__/                      # Hook tests
+└── lib/loops/__tests__/                  # Utility tests
+```
+
+Mobile follows the same pattern:
+
+```
+src/
+├── hooks/api/__tests__/                  # API hook property tests
+├── hooks/__tests__/                      # Hook property tests
+└── context/__tests__/                    # Context tests
+```
+
+## Property-Based Testing
+
+Property-based tests define invariants that must hold for all valid inputs. fast-check generates random inputs and verifies the property holds across many iterations.
+
+### Conventions
+
+- Minimum 100 iterations per property (`{ numRuns: 100 }`)
+- File naming: `*.property.test.ts` or `*.property.test.tsx`
+- Each property maps to a requirement from the spec
+
+### Example: Error Response Format
+
+This property verifies that all error responses follow the standard format regardless of input:
+
+```typescript
+import fc from 'fast-check';
+import { createErrorResponse } from '@/lib/utils/errors';
+
+it('for any error code and message, response contains error.code and error.message', async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.string({ minLength: 1, maxLength: 50 }).filter(s => s.trim().length > 0),
+      fc.string({ minLength: 1, maxLength: 200 }).filter(s => s.trim().length > 0),
+      fc.integer({ min: 400, max: 599 }),
+      async (code, message, status) => {
+        const response = createErrorResponse(code.trim(), message.trim(), status);
+        const body = await response.json();
+
+        expect(body.error.code).toBe(code.trim());
+        expect(body.error.message).toBe(message.trim());
+        expect(response.status).toBe(status);
+      }
+    ),
+    { numRuns: 100 }
+  );
+});
+```
+
+### Example: Cache Header Consistency
+
+```typescript
+it('should generate consistent ETags for same data', () => {
+  fc.assert(
+    fc.property(
+      fc.record({
+        id: fc.uuid(),
+        title: fc.string({ minLength: 1, maxLength: 50 }),
+        count: fc.integer({ min: 0, max: 10000 }),
+      }),
+      (data) => {
+        const etag1 = generateETag(data);
+        const etag2 = generateETag(data);
+        expect(etag1).toBe(etag2);
+        expect(etag1).toMatch(/^[a-f0-9]{32}$/);
+      }
+    ),
+    { numRuns: 50 }
+  );
+});
+```
+
+## Existing Property Test Suites
+
+### Web API Tests (`apps/web/src/app/api/__tests__/`)
+
+| Test | What It Validates |
+|------|-------------------|
+| `api-defaults.property.test.ts` | Default pagination and response structure |
+| `cache-headers.property.test.ts` | Cache-Control headers and ETag generation |
+| `error-response-format.property.test.ts` | Standard error format for all status codes |
+| `protected-routes-auth.property.test.ts` | Auth enforcement on protected routes |
+| `rpc-logging.property.test.ts` | RPC call logging consistency |
+| `stale-while-revalidate.property.test.ts` | SWR cache behavior |
+
+### Web Component Tests
+
+Property tests exist for modals (SaveModal, FollowModal, ImageLightbox, NotificationsModal), overlays (ContentOverlay, CollectionOverlayView), and form submissions.
+
+### Mobile Hook Tests (`apps/mobile/src/hooks/api/__tests__/`)
+
+| Test | What It Validates |
+|------|-------------------|
+| `useComments.property.test.ts` | Comment CRUD operations |
+| `useEngagementCounters.property.test.ts` | Like/repost counter consistency |
+| `useFavorites.property.test.ts` | Favorite toggle behavior |
+| `usePosts.property.test.ts` | Post listing and filtering |
+| `useProfileData.property.test.ts` | Profile data loading |
+| `useSaveOperations.property.test.ts` | Save/unsave operations |
+| `useSaveStatus.property.test.ts` | Save status checks |
+| `useUser.property.test.ts` | User data fetching |
+
+## Writing New Tests
+
+### Standard Test
+
+```typescript
+import { render, screen } from '@testing-library/react';
+
+describe('RecipeCard', () => {
+  it('renders recipe title', () => {
+    render(<RecipeCard recipe={mockRecipe} />);
+    expect(screen.getByText('Classic Chrome Street')).toBeInTheDocument();
+  });
+});
+```
+
+### Property Test
+
+```typescript
+import fc from 'fast-check';
+
+describe('Property: Pagination bounds', () => {
+  it('page and limit are always positive integers', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100 }),
+        fc.integer({ min: 1, max: 50 }),
+        (page, limit) => {
+          const result = parsePagination({ page, limit });
+          expect(result.offset).toBe((page - 1) * limit);
+          expect(result.offset).toBeGreaterThanOrEqual(0);
+        }
+      ),
+      { numRuns: 100 }
+    );
+  });
+});
+```
+
+<Note>
+  Property tests are more valuable for business logic, data transformations, and API contracts. Use standard tests for UI rendering and user interactions.
+</Note>

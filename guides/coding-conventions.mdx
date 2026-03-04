@@ -1,0 +1,136 @@
+---
+title: Coding Conventions
+description: "Type safety rules, naming conventions, and project standards."
+---
+
+## Type Safety
+
+### No `any` Types
+
+Use strict TypeScript throughout. Define proper interfaces for all data structures.
+
+### Type Locations
+
+| File | Convention | Purpose |
+|------|-----------|---------|
+| `types/database.ts` | `snake_case` | Match Supabase schema |
+| `types/api.ts` | `camelCase` | API request/response contracts |
+| `types/forms.ts` | `camelCase` | React Hook Form types |
+
+### Type Conversion
+
+Database fields use `snake_case`, API responses use `camelCase`. Convert with utilities:
+
+```typescript
+import { snakeToCamel, camelToSnake } from '@/lib/utils/typeConversion';
+```
+
+## Component Patterns
+
+### shadcn/ui Imports
+
+Always import from `@/componentlibrary`:
+
+```tsx
+import { Button } from '@/componentlibrary/button';
+import { Card } from '@/componentlibrary/card';
+```
+
+### Feature Components
+
+Location: `components/features/{domain}/` where domain is `auth/`, `recipe/`, `user/`.
+
+Each component gets its own folder:
+```
+components/features/recipe/
+├── RecipeCard/
+│   ├── RecipeCard.tsx
+│   └── index.ts
+```
+
+### Icons
+
+Use Lucide React exclusively:
+
+```tsx
+import { Heart, Camera, User, Settings } from 'lucide-react';
+```
+
+### Styling
+
+Tailwind CSS only — no CSS Modules. Use `cn()` for conditional classes:
+
+```tsx
+import { cn } from '@/lib/utils';
+<div className={cn("p-4", isActive && "bg-primary")} />
+```
+
+## API Route Patterns
+
+### Authentication
+
+```tsx
+const authResult = await requireAuth(supabase);
+if (!authResult.success) return authResult.response;
+const { user } = authResult;
+```
+
+### Error Responses
+
+Use standardized utilities from `@/lib/utils/errors`:
+
+```tsx
+return validationError('Invalid data', details);  // 400
+return unauthorizedError();                         // 401
+return forbiddenError('Not your resource');          // 403
+return notFoundError('Recipe');                     // 404
+return conflictError('DUPLICATE', 'Already exists'); // 409
+return internalError('Something went wrong');        // 500
+```
+
+### Validation
+
+Always validate with Zod schemas from `@/lib/utils/validation`:
+
+```tsx
+const result = recipeSchema.safeParse(body);
+if (!result.success) {
+  return validationError('Invalid data', result.error.flatten().fieldErrors);
+}
+```
+
+### Pagination
+
+```tsx
+const validation = validatePaginationParams(pageParam, limitParam);
+if (!validation.valid) return validationError(validation.error);
+
+const { page, limit, offset } = parsePagination({ page: pageParam, limit: limitParam });
+```
+
+## State Management
+
+| Layer | Tool | Location |
+|-------|------|----------|
+| Server state | React Query | `hooks/api/` |
+| Global state | Context providers | `AuthContext`, `ModalContext`, `ToastContext` |
+| Form state | React Hook Form + Zod | `components/forms/` |
+
+## Database Conventions
+
+- Soft deletes: `is_deleted` flag on recipes, posts, collections
+- Always filter: `WHERE is_deleted = FALSE`
+- Views: `recipe_with_stats`, `collection_with_stats`, `post_with_stats`, `profile_stats`
+- Denormalized counters maintained by triggers
+
+## Don'ts
+
+- Use `getServerSideProps` or `getStaticProps` (use App Router)
+- Call Supabase directly from client for mutations
+- Store sensitive data in localStorage
+- Skip confirmation modals for destructive actions
+- Hardcode URLs (use environment variables)
+- Use CSS Modules
+- Create duplicate components
+- Use `any` type
+- Expose service role key to client

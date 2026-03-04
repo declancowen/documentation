@@ -1,0 +1,43 @@
+---
+title: List Collections
+description: "Get all collections with filtering and pagination."
+---
+
+## GET /api/collections
+
+Returns a paginated list of public collections.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+| `search` | — | Search name/description |
+| `sort` | `recent` | `recent` or `popular` |
+
+### Response (200)
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Tokyo Street Recipes",
+      "description": "My favorite street photography settings",
+      "coverImageUrl": "https://...",
+      "itemCount": 12,
+      "favoriteCount": 18,
+      "isFavorited": false,
+      "isPublic": true,
+      "author": {
+        "id": "uuid",
+        "username": "johndoe",
+        "avatarUrl": "https://..."
+      },
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": { ... }
+}
+```

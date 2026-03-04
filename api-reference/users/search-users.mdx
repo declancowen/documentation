@@ -1,0 +1,35 @@
+---
+title: Search Users
+api: GET /api/users/search
+description: Search users by username for mention/tag autocomplete.
+---
+
+## Authentication
+
+Not required.
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `q` | string | Yes | Search query (min 1 character) |
+
+## Behavior
+
+- Case-insensitive `ILIKE` search on the `username` column.
+- Returns up to 10 results.
+- Used primarily for `@mention` autocomplete in comment inputs and user tagging in recipe/post creation.
+
+## Response
+
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "username": "filmshooter",
+      "avatarUrl": "https://..."
+    }
+  ]
+}
+```

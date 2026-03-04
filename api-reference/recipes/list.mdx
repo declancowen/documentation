@@ -1,0 +1,50 @@
+---
+title: List Recipes
+description: "Get all recipes with filtering and pagination."
+---
+
+## GET /api/recipes
+
+Returns a paginated, filterable list of recipes.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+| `filmSimulation` | — | Filter by film simulation |
+| `cameraModel` | — | Filter by camera model |
+| `search` | — | Search title/description |
+| `sort` | `recent` | `recent` or `popular` |
+
+### Response (200)
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "title": "Classic Chrome Street",
+      "description": "Moody street photography look",
+      "coverImageUrl": "https://...",
+      "filmSimulation": "Classic Chrome",
+      "cameraModel": "X-T5",
+      "favoriteCount": 42,
+      "isFavorited": false,
+      "author": {
+        "id": "uuid",
+        "username": "johndoe",
+        "avatarUrl": "https://..."
+      },
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+```

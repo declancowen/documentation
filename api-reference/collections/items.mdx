@@ -1,0 +1,48 @@
+---
+title: Collection Items
+description: "Add or remove items from a collection."
+---
+
+## POST /api/collections/[id]/items
+
+Add a saved item to a collection.
+
+<Note>Requires authentication. Collection owner only.</Note>
+
+### Request Body
+
+```json
+{
+  "savedItemId": "uuid"
+}
+```
+
+### Response (201)
+
+```json
+{
+  "message": "Item added to collection"
+}
+```
+
+---
+
+## DELETE /api/collections/[id]/items
+
+Remove a saved item from a collection. This also removes the item from the `saved_items` table.
+
+### Request Body
+
+```json
+{
+  "savedItemId": "uuid"
+}
+```
+
+### Response (200)
+
+```json
+{
+  "message": "Item removed from collection"
+}
+```

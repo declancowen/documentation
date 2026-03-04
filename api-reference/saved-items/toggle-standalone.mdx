@@ -1,0 +1,44 @@
+---
+title: Toggle Standalone Save
+api: POST /api/saved-items/toggle-standalone
+description: Toggle the standalone save status of an item.
+---
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request Body
+
+```json
+{
+  "content_type": "recipe",
+  "content_id": "uuid"
+}
+```
+
+## Behavior
+
+| Current State | Action |
+|---------------|--------|
+| Not saved at all | Creates a new `saved_items` record (standalone) |
+| Saved standalone (not in collections) | Deletes the `saved_items` record |
+| In collections only | No-op — returns current state |
+
+Items that are in collections cannot be toggled to standalone because removing the `saved_items` record would break collection links.
+
+## Response
+
+```json
+{
+  "isStandaloneSaved": true,
+  "savedItemId": "uuid"
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `VALIDATION_ERROR` | Missing or invalid parameters |
+| 401 | `UNAUTHORIZED` | Not authenticated |

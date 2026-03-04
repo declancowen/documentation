@@ -1,0 +1,58 @@
+---
+title: Get User Saved Items
+api: GET /api/users/{id}/saved-items
+description: Get a user's saved items with optional standalone filter.
+---
+
+## Authentication
+
+No explicit auth check — relies on the user ID in the path.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | The user ID |
+
+## Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | 1 | Page number |
+| `limit` | integer | 12 | Items per page |
+| `standalone` | string | — | Set to `true` for items NOT in any collection |
+| `content_type` | string | — | Filter by `post` or `recipe` |
+
+## Standalone Filter
+
+When `standalone=true`, the endpoint:
+1. Fetches all saved items for the user
+2. Queries `collection_saved_items` to find which are in collections
+3. Filters to only items NOT in any collection
+4. Applies pagination after filtering
+
+## Response
+
+```json
+{
+  "savedItems": [
+    {
+      "id": "uuid",
+      "userId": "uuid",
+      "contentType": "recipe",
+      "contentId": "uuid",
+      "createdAt": "2025-01-15T10:30:00Z",
+      "content": {
+        "title": "Classic Chrome Street",
+        "coverImageUrl": "https://...",
+        "author": {
+          "id": "uuid",
+          "username": "creator",
+          "avatarUrl": "https://..."
+        }
+      }
+    }
+  ],
+  "pagination": { ... }
+}
+```

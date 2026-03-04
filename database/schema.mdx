@@ -1,0 +1,264 @@
+---
+title: Database Schema
+description: "PostgreSQL schema for Recipe Room via Supabase."
+---
+
+## Entity Relationships
+
+```
+profiles (1) ──< recipes (many)
+profiles (1) ──< posts (many)
+profiles (1) ──< collections (many)
+recipes (1) ──< recipe_images (many)
+recipes (1) ──< recipe_tags (many)
+recipes (1) ──< lightroom_settings (1)
+posts (1) ──< post_images (many)
+posts (1) ──< post_tags (many)
+collections (many) ──< collection_saved_items >── saved_items (many)
+profiles (many) ──< follows >── profiles (many)
+profiles (many) ──< recipe_favorites >── recipes (many)
+profiles (many) ──< post_favorites >── posts (many)
+profiles (many) ──< recipe_reposts >── recipes (many)
+profiles (many) ──< post_reposts >── posts (many)
+profiles (many) ──< post_tagged_users >── posts (many)
+profiles (many) ──< recipe_tagged_users >── recipes (many)
+post_comments (1) ──< post_comment_mentions >── profiles (many)
+recipe_comments (1) ──< recipe_comment_mentions >── profiles (many)
+```
+
+## Core Tables
+
+### profiles
+
+Extends Supabase `auth.users` with profile data.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID (PK, FK) | References `auth.users(id)` |
+| `username` | TEXT | Unique, required |
+| `first_name` | TEXT | Required |
+| `surname` | TEXT | Required |
+| `location` | TEXT | Required |
+| `instagram_handle` | TEXT | Optional |
+| `bio` | TEXT | Required |
+| `avatar_url` | TEXT | Supabase Storage URL |
+| `cover_photo_url` | TEXT | Supabase Storage URL |
+| `recipe_count` | INTEGER | Denormalized counter (trigger-maintained) |
+| `post_count` | INTEGER | Denormalized counter |
+| `collection_count` | INTEGER | Denormalized counter |
+| `follower_count` | INTEGER | Denormalized counter |
+| `following_count` | INTEGER | Denormalized counter |
+| `created_at` | TIMESTAMPTZ | Auto |
+| `updated_at` | TIMESTAMPTZ | Auto |
+
+### recipes
+
+Fujifilm film simulation recipes with all camera settings.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID (PK) | Auto-generated |
+| `user_id` | UUID (FK) | References `profiles(id)` |
+| `title` | TEXT | Required |
+| `description` | TEXT | Optional |
+| `camera_model` | TEXT | Optional |
+| `cover_image_url` | TEXT | First image or selected |
+| `film_simulation` | TEXT | Default: 'Provia' |
+| `dynamic_range` | TEXT | Default: 'DR100' |
+| `grain_effect` | TEXT | Default: 'Off' |
+| `color_chrome_effect` | TEXT | Default: 'Off' |
+| `color_chrome_effect_blue` | TEXT | Default: 'Off' |
+| `white_balance_mode` | TEXT | Default: 'Auto' |
+| `white_balance_kelvin` | INTEGER | Default: 5500 |
+| `white_balance_red` | INTEGER | Default: 0 |
+| `white_balance_blue` | INTEGER | Default: 0 |
+| `highlight` | INTEGER | Range: -2 to +4 |
+| `shadow` | INTEGER | Range: -2 to +4 |
+| `color` | INTEGER | Range: -4 to +4 |
+| `sharpness` | INTEGER | Range: -4 to +4 |
+| `noise_reduction` | INTEGER | Range: -4 to +4 |
+| `clarity` | INTEGER | Range: -5 to +5 |
+| `iso_setting` | TEXT | Optional |
+| `exposure_compensation` | TEXT | Optional |
+| `is_deleted` | BOOLEAN | Soft delete flag |
+| `created_at` | TIMESTAMPTZ | Auto |
+| `updated_at` | TIMESTAMPTZ | Auto |
+| `comment_count` | INTEGER | Denormalized counter (trigger-maintained) |
+| `favorite_count` | INTEGER | Denormalized counter |
+| `repost_count` | INTEGER | Denormalized counter |
+
+### posts
+
+Photo posts with optional recipe linking.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID (PK) | Auto-generated |
+| `user_id` | UUID (FK) | References `profiles(id)` |
+| `title` | TEXT | Optional |
+| `caption` | TEXT | Required |
+| `camera_model` | TEXT | Optional |
+| `film_simulation` | TEXT | Optional, validated against allowed values |
+| `recipe_id` | UUID (FK) | Optional recipe link |
+| `cover_image_url` | TEXT | First image |
+| `is_deleted` | BOOLEAN | Soft delete flag |
+| `created_at` | TIMESTAMPTZ | Auto |
+| `updated_at` | TIMESTAMPTZ | Auto |
+| `comment_count` | INTEGER | Denormalized counter |
+| `favorite_count` | INTEGER | Denormalized counter |
+| `repost_count` | INTEGER | Denormalized counter |
+
+### collections
+
+User-created groupings of saved content.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID (PK) | Auto-generated |
+| `user_id` | UUID (FK) | References `profiles(id)` |
+| `name` | TEXT | Required |
+| `description` | TEXT | Optional |
+| `cover_recipe_id` | UUID | Cover image source |
+| `is_public` | BOOLEAN | Visibility toggle |
+| `is_deleted` | BOOLEAN | Soft delete flag |
+| `item_count` | INTEGER | Denormalized counter (trigger-maintained) |
+
+## Lightroom Settings
+
+### lightroom_settings
+
+Optional Adobe Lightroom editing settings linked 1:1 to a recipe.
+
+| Column | Type | Range | Default |
+|--------|------|-------|---------|
+| `id` | UUID (PK) | — | Auto-generated |
+| `recipe_id` | UUID (FK, unique) | — | References `recipes(id)` |
+| `exposure` | NUMERIC | -5.0 to 5.0 | 0 |
+| `contrast` | INTEGER | -100 to 100 | 0 |
+| `highlights` | INTEGER | -100 to 100 | 0 |
+| `shadows` | INTEGER | -100 to 100 | 0 |
+| `whites` | INTEGER | -100 to 100 | 0 |
+| `blacks` | INTEGER | -100 to 100 | 0 |
+| `temperature` | INTEGER | -100 to 100 | 0 |
+| `tint` | INTEGER | -100 to 100 | 0 |
+| `vibrance` | INTEGER | -100 to 100 | 0 |
+| `saturation` | INTEGER | -100 to 100 | 0 |
+| `clarity` | INTEGER | -100 to 100 | 0 |
+| `dehaze` | INTEGER | -100 to 100 | 0 |
+| `texture` | INTEGER | -100 to 100 | 0 |
+| `sharpening` | INTEGER | 0 to 150 | 0 |
+| `noise_reduction` | INTEGER | 0 to 100 | 0 |
+
+## Junction / Relationship Tables
+
+### Content Media & Tags
+
+| Table | Purpose | Keys |
+|-------|---------|------|
+| `recipe_images` | Images per recipe (max 10) | `recipe_id`, `image_url`, `is_cover`, `display_order` |
+| `recipe_tags` | Tags on recipes | `recipe_id`, `tag` |
+| `post_images` | Images per post | `post_id`, `image_url`, `is_cover`, `display_order` |
+| `post_tags` | Tags on posts | `post_id`, `tag` |
+
+### Social Relationships
+
+| Table | Purpose | Composite PK |
+|-------|---------|-------------|
+| `follows` | User follow relationships | `(follower_id, following_id)` |
+| `recipe_favorites` | Recipe likes | `(user_id, recipe_id)` |
+| `post_favorites` | Post likes | `(user_id, post_id)` |
+| `recipe_reposts` | Recipe reposts | `(user_id, recipe_id)` |
+| `post_reposts` | Post reposts | `(user_id, post_id)` |
+
+### Saved Items & Collections
+
+| Table | Purpose | Keys |
+|-------|---------|------|
+| `saved_items` | Bookmarked content | `user_id`, `content_type` (post/recipe/collection), `content_id` |
+| `collection_saved_items` | Items in collections | `(collection_id, saved_item_id)` |
+
+### Comments
+
+| Table | Purpose | Keys |
+|-------|---------|------|
+| `post_comments` | Comments on posts | `post_id`, `user_id`, `content` |
+| `recipe_comments` | Comments on recipes | `recipe_id`, `user_id`, `content` |
+
+<Note>
+  `collection_comments`, `collection_favorites`, `collection_reposts`, and `collection_tagged_users` were removed in a previous migration. Collections are organizational tools, not social content — they don't support comments, favorites, reposts, or tagging.
+</Note>
+
+### User Tagging
+
+| Table | Purpose | Composite PK |
+|-------|---------|-------------|
+| `post_tagged_users` | Users tagged in posts | `(post_id, tagged_user_id)` |
+| `recipe_tagged_users` | Users tagged in recipes | `(recipe_id, tagged_user_id)` |
+
+### Comment Mentions
+
+| Table | Purpose | Composite PK |
+|-------|---------|-------------|
+| `post_comment_mentions` | @mentions in post comments | `(comment_id, mentioned_user_id)` |
+| `recipe_comment_mentions` | @mentions in recipe comments | `(comment_id, mentioned_user_id)` |
+
+<Note>
+  A `collection_comment_mentions` table previously existed but was dropped along with `collection_comments`. The notification CHECK constraint still includes `mention_collection_comment` for forward compatibility.
+</Note>
+
+### Notifications
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID (PK) | Auto-generated |
+| `recipient_id` | UUID (FK) | User receiving the notification |
+| `actor_id` | UUID (FK) | User who triggered it |
+| `type` | TEXT | See allowed types below |
+| `content_type` | TEXT | `post`, `recipe`, or `collection` |
+| `content_id` | UUID | The content being referenced |
+| `comment_id` | UUID | Optional — set for mention notifications |
+| `is_read` | BOOLEAN | Default `false` |
+| `created_at` | TIMESTAMPTZ | Auto |
+
+Allowed notification types (enforced by CHECK constraint):
+
+| Type | Trigger |
+|------|---------|
+| `tag_post` | User tagged in a post |
+| `tag_recipe` | User tagged in a recipe |
+| `tag_collection` | User tagged in a collection |
+| `mention_post_comment` | @mentioned in a post comment |
+| `mention_recipe_comment` | @mentioned in a recipe comment |
+| `mention_collection_comment` | @mentioned in a collection comment |
+
+<Note>
+  The `mention_collection_comment` and `tag_collection` types exist in the CHECK constraint but their corresponding trigger functions are orphaned (no active triggers invoke them). They remain in the schema for forward compatibility.
+</Note>
+
+## Fujifilm Settings Reference
+
+### Film Simulations
+
+Provia, Velvia, Astia, Classic Chrome, Pro Neg Hi, Pro Neg Std, Classic Neg, Eterna, Eterna Bleach Bypass, Acros, Acros+Ye, Acros+R, Acros+G, Monochrome, Monochrome+Ye, Monochrome+R, Monochrome+G, Sepia, Nostalgic Neg, Reala Ace
+
+### Setting Ranges
+
+| Setting | Min | Max |
+|---------|-----|-----|
+| Highlight | -2 | +4 |
+| Shadow | -2 | +4 |
+| Color | -4 | +4 |
+| Sharpness | -4 | +4 |
+| Noise Reduction | -4 | +4 |
+| Clarity | -5 | +5 |
+| WB Red/Blue Shift | -9 | +9 |
+| Kelvin | 2500 | 10000 |
+
+## Views
+
+| View | Purpose |
+|------|---------|
+| `recipe_with_stats` | Recipes joined with author info (`author_username`, `author_avatar`, `author_first_name`, `author_surname`) and `favorite_count`, `comment_count`, `repost_count` |
+| `collection_with_stats` | Collections with author info, `favorite_count`, `item_count`, `repost_count`, `is_public` |
+| `post_with_stats` | Posts with author info, `favorite_count`, `comment_count`, `repost_count` |
+| `profile_stats` | Profiles with `follower_count`, `following_count`, `recipe_count`, `collection_count`, `post_count`, `total_recipe_likes`, `total_collection_likes`, `total_post_likes` |

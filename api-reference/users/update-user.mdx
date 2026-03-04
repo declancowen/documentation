@@ -1,0 +1,41 @@
+---
+title: Update User
+description: "Update the current user's profile."
+---
+
+## PATCH /api/users/[id]
+
+Updates the authenticated user's profile. Can only update your own profile.
+
+<Note>Requires authentication. User can only update their own profile.</Note>
+
+### Request Body
+
+All fields are optional:
+
+```json
+{
+  "firstName": "John",
+  "surname": "Doe",
+  "location": "Los Angeles, USA",
+  "bio": "Updated bio",
+  "instagramHandle": "new_handle"
+}
+```
+
+### Response (200)
+
+```json
+{
+  "message": "Profile updated successfully",
+  "user": { ... }
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Invalid field values |
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not your profile |

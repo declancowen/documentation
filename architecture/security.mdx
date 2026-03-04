@@ -1,0 +1,90 @@
+---
+title: Security
+description: "Authentication, authorization, and security patterns in Recipe Room."
+---
+
+## Authentication Flow
+
+```
+1. User submits credentials
+2. API route validates input with Zod
+3. Supabase Auth verifies credentials
+4. JWT token returned to client
+5. Token stored in httpOnly cookie (web) / SecureStore (mobile)
+6. Subsequent requests include token
+7. API routes verify token before processing
+```
+
+## Authorization Layers
+
+Recipe Room uses three layers of authorization:
+
+<Steps>
+  <Step title="API Route Level">
+    Every protected API route uses the `requireAuth` utility to verify the JWT and extract the user:
+
+    ```tsx
+    import { requireAuth } from '@/lib/utils/auth';
+
+    const authResult = await requireAuth(supabase);
+    if (!authResult.success) {
+      return authResult.response; // 401 Unauthorized
+    }
+    const { user } = authResult;
+    ```
+  </Step>
+  <Step title="Supabase RLS">
+    Row Level Security policies enforce database-level access control. Even if an API route has a bug, RLS prevents unauthorized data access.
+  </Step>
+  <Step title="Storage Policies">
+    Supabase Storage policies restrict file access based on ownership. Users can only upload to their own folder.
+  </Step>
+</Steps>
+
+## API-First Security
+
+<Warning>
+  All data mutations MUST go through API routes (`/api/*`). Never call Supabase directly from the client for writes.
+</Warning>
+
+- Use `lib/supabase/client.ts` for browser-side reads
+- Use `lib/supabase/server.ts` for API routes (has service role access)
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client
+
+## Input Validation
+
+All inputs are validated server-side using Zod schemas from the shared package:
+
+```tsx
+import { recipeSchema } from '@recipe-room/shared';
+
+const result = recipeSchema.safeParse(body);
+if (!result.success) {
+  return validationError('Invalid data', result.error.flatten().fieldErrors);
+}
+```
+
+## Error Responses
+
+Standardized error format across all API routes:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid email format",
+    "details": { "field": "email" }
+  }
+}
+```
+
+Error utilities:
+
+| Function | Status Code |
+|----------|-------------|
+| `validationError()` | 400 |
+| `unauthorizedError()` | 401 |
+| `forbiddenError()` | 403 |
+| `notFoundError()` | 404 |
+| `conflictError()` | 409 |
+| `internalError()` | 500 |

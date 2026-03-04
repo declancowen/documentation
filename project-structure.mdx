@@ -1,0 +1,119 @@
+---
+title: Project Structure
+description: "How the Recipe Room monorepo is organized."
+---
+
+## Top-Level Layout
+
+```
+recipe-room-monorepo/
+├── apps/
+│   ├── web/              # Next.js 14 web application
+│   ├── web-interim/      # Legacy interim web app (deprecated)
+│   └── mobile/           # React Native (Expo) iOS app
+├── packages/
+│   └── shared/           # Shared types, validation, constants
+├── supabase/             # Database migrations
+├── docs/                 # Documentation
+├── pnpm-workspace.yaml   # Workspace config
+└── package.json          # Root scripts
+```
+
+<Note>
+  `apps/web-interim/` is a legacy app from an earlier migration phase. It is not actively maintained and should not be used for new development.
+</Note>
+
+## Web App (`apps/web/`)
+
+```
+src/
+├── app/                      # Next.js App Router
+│   ├── (auth)/               # Auth pages (login, register)
+│   ├── (main)/               # Main app pages
+│   │   ├── recipes/          # Recipe browse, create, view, edit
+│   │   ├── collections/      # Collection pages
+│   │   ├── profile/[username] # Public profiles
+│   │   ├── me/               # Current user profile
+│   │   ├── favorites/        # User favorites
+│   │   └── settings/         # Account settings
+│   └── api/                  # API routes (serverless)
+│       ├── auth/             # register, login, logout
+│       ├── users/            # CRUD, follow, followers
+│       ├── recipes/          # CRUD, favorite, featured
+│       ├── posts/            # CRUD, favorite, comments
+│       ├── collections/      # CRUD, items, favorite
+│       ├── saved-items/      # Save/unsave operations
+│       ├── search/           # Global search
+│       ├── notifications/    # Notification management
+│       └── upload/           # Image upload
+│
+├── componentlibrary/         # shadcn/ui components
+├── components/
+│   ├── features/             # Domain components (auth, recipe, user)
+│   ├── forms/                # Form components
+│   └── layout/               # Header, Footer, Container
+│
+├── context/                  # AuthContext, ModalContext, ToastContext
+├── hooks/                    # Custom hooks + api/ hooks
+├── lib/                      # Supabase clients, API client, utils
+├── styles/                   # Global CSS
+└── types/                    # TypeScript definitions
+```
+
+## Mobile App (`apps/mobile/`)
+
+```
+app/                          # expo-router file-based routing
+├── (tabs)/                   # Tab navigation
+│   ├── index.tsx             # Home feed
+│   ├── discover.tsx          # Discover page
+│   ├── search.tsx            # Search
+│   ├── saved.tsx             # Saved items
+│   └── profile.tsx           # Current user profile
+├── post/[id].tsx             # Post detail
+├── recipe/[id].tsx           # Recipe detail
+├── collection/[id].tsx       # Collection detail
+├── login.tsx                 # Login
+├── register.tsx              # Register
+└── settings.tsx              # Settings
+
+src/
+├── components/               # UI components
+├── hooks/                    # Custom hooks
+├── lib/                      # Supabase client
+├── providers/                # Auth, Query providers
+└── utils/                    # Utilities
+```
+
+## Shared Package (`packages/shared/`)
+
+```
+src/
+├── types/                    # Database, API, form types
+├── validation/               # Zod schemas for all forms/inputs
+├── constants/                # Routes, theme tokens, Fujifilm settings
+├── api/                      # API client, query keys, Supabase utils
+└── utils/                    # Tag suggestions, type conversions
+```
+
+Import in either app:
+```tsx
+import { recipeSchema, type RecipeFormValues } from '@recipe-room/shared';
+```
+
+## Component Conventions
+
+Each component follows this pattern:
+
+```
+ComponentName/
+├── ComponentName.tsx         # Main component
+├── index.ts                  # Barrel export
+└── ComponentName.test.ts     # Tests (optional)
+```
+
+Import from barrel exports:
+```tsx
+import { RecipeCard } from '@/components/features/recipe';
+import { Button } from '@/componentlibrary/button';
+```

@@ -1,0 +1,32 @@
+---
+title: Update Recipe
+description: "Update an existing recipe."
+---
+
+## PATCH /api/recipes/[id]
+
+Updates a recipe. Only the recipe owner can update it. All fields are optional.
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Request Body
+
+Same fields as [Create Recipe](/api-reference/recipes/create), all optional.
+
+### Response (200)
+
+```json
+{
+  "message": "Recipe updated successfully",
+  "recipe": { ... }
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Invalid fields |
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not the recipe owner |
+| 404 | `NOT_FOUND` | Recipe not found |

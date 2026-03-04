@@ -1,0 +1,43 @@
+---
+title: Get Saved Item
+api: GET /api/saved-items/{id}
+description: Get a specific saved item by ID, including which collections it belongs to.
+---
+
+## Authentication
+
+Requires authentication. Only the owner can view their saved items.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | The saved item ID |
+
+## Response
+
+```json
+{
+  "savedItem": {
+    "id": "uuid",
+    "userId": "uuid",
+    "contentType": "recipe",
+    "contentId": "uuid",
+    "createdAt": "2025-01-15T10:30:00Z"
+  },
+  "collections": [
+    {
+      "id": "uuid",
+      "name": "Street Photography"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not the owner |
+| 404 | `NOT_FOUND` | Saved item not found |

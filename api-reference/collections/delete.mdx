@@ -1,0 +1,20 @@
+---
+title: Delete Collection
+description: "Delete a collection."
+---
+
+## DELETE /api/collections/[id]
+
+Hard-deletes a collection. Does not delete the saved items themselves, only the collection grouping.
+
+<Warning>This is a permanent deletion. The client should show a confirmation modal.</Warning>
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Response (200)
+
+```json
+{
+  "message": "Collection deleted successfully"
+}
+```

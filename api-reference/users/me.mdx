@@ -1,0 +1,36 @@
+---
+title: Current User
+description: "Get the authenticated user's profile."
+---
+
+## GET /api/users/me
+
+Returns the current authenticated user's profile with stats.
+
+<Note>Requires authentication.</Note>
+
+### Response (200)
+
+```json
+{
+  "id": "uuid",
+  "username": "johndoe",
+  "firstName": "John",
+  "surname": "Doe",
+  "location": "New York, USA",
+  "bio": "Fujifilm enthusiast",
+  "instagramHandle": "johndoe_photo",
+  "avatarUrl": "https://storage.supabase.co/...",
+  "coverPhotoUrl": "https://storage.supabase.co/...",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "stats": {
+    "followerCount": 150,
+    "followingCount": 75,
+    "recipeCount": 25,
+    "postCount": 40,
+    "collectionCount": 5,
+    "totalRecipeLikes": 342,
+    "totalPostLikes": 520
+  }
+}
+```

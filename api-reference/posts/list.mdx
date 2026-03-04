@@ -1,0 +1,47 @@
+---
+title: List Posts
+description: "Get all posts with filtering and pagination."
+---
+
+## GET /api/posts
+
+Returns a paginated, filterable list of posts.
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+| `filmSimulation` | — | Filter by film simulation |
+| `cameraModel` | — | Filter by camera model |
+| `search` | — | Search title/caption |
+| `sort` | `recent` | `recent` or `popular` |
+
+### Response (200)
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "title": "Golden hour in Tokyo",
+      "caption": "Shot on Classic Chrome",
+      "coverImageUrl": "https://...",
+      "filmSimulation": "Classic Chrome",
+      "cameraModel": "X-T5",
+      "recipeId": "uuid or null",
+      "favoriteCount": 28,
+      "commentCount": 5,
+      "isFavorited": false,
+      "author": {
+        "id": "uuid",
+        "username": "johndoe",
+        "avatarUrl": "https://..."
+      },
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": { ... }
+}
+```

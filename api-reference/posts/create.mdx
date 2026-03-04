@@ -1,0 +1,51 @@
+---
+title: Create Post
+description: "Create a new photo post."
+---
+
+## POST /api/posts
+
+Creates a new photo post with images, tags, and optional recipe link.
+
+<Note>Requires authentication.</Note>
+
+### Request Body
+
+```json
+{
+  "title": "Golden hour in Tokyo",
+  "caption": "Shot on Classic Chrome with the X-T5",
+  "cameraModel": "X-T5",
+  "filmSimulation": "Classic Chrome",
+  "recipeId": "uuid (optional)",
+  "tags": ["street", "golden-hour", "tokyo"],
+  "images": [
+    { "imageUrl": "https://...", "isCover": true, "order": 1 },
+    { "imageUrl": "https://...", "isCover": false, "order": 2 }
+  ],
+  "taggedUserIds": ["uuid1", "uuid2"]
+}
+```
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `title` | string | Yes | 5-30 characters |
+| `caption` | string | No | Max 200 characters |
+| `cameraModel` | string | No | |
+| `filmSimulation` | string | No | |
+| `recipeId` | UUID | No | Must be a valid recipe |
+| `tags` | string[] | No | |
+| `images` | array | Yes | At least 1 image |
+| `taggedUserIds` | UUID[] | No | Creates notifications |
+
+### Response (201)
+
+```json
+{
+  "message": "Post created successfully",
+  "post": {
+    "id": "uuid",
+    ...
+  }
+}
+```

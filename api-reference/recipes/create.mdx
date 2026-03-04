@@ -1,0 +1,78 @@
+---
+title: Create Recipe
+description: "Create a new film simulation recipe."
+---
+
+## POST /api/recipes
+
+Creates a new Fujifilm film simulation recipe.
+
+<Note>Requires authentication.</Note>
+
+### Request Body
+
+```json
+{
+  "title": "Classic Chrome Street",
+  "description": "Moody street photography look",
+  "cameraModel": "X-T5",
+  "filmSimulation": "Classic Chrome",
+  "dynamicRange": "DR200",
+  "grainEffect": "Weak Small",
+  "colorChromeEffect": "Strong",
+  "colorChromeEffectBlue": "Weak",
+  "whiteBalanceMode": "Daylight",
+  "whiteBalanceKelvin": 5500,
+  "whiteBalanceRed": 2,
+  "whiteBalanceBlue": -3,
+  "highlight": -1,
+  "shadow": 2,
+  "color": 1,
+  "sharpness": -2,
+  "noiseReduction": -3,
+  "clarity": 0,
+  "isoSetting": "Auto",
+  "exposureCompensation": "+2/3",
+  "tags": ["street", "moody", "urban"],
+  "images": [
+    { "imageUrl": "https://...", "isCover": true, "order": 1 },
+    { "imageUrl": "https://...", "isCover": false, "order": 2 }
+  ]
+}
+```
+
+### Fujifilm Settings
+
+| Field | Type | Range/Options |
+|-------|------|---------------|
+| `filmSimulation` | string | Provia, Velvia, Astia, Classic Chrome, Classic Neg, Eterna, Acros, Nostalgic Neg, Reala Ace, etc. |
+| `dynamicRange` | string | DR100, DR200, DR400, Auto |
+| `grainEffect` | string | Off, Weak Small, Weak Large, Strong Small, Strong Large |
+| `colorChromeEffect` | string | Off, Weak, Strong |
+| `whiteBalanceMode` | string | Auto, Daylight, Shade, Fluorescent 1/2/3, Incandescent, Underwater, Kelvin |
+| `highlight` | integer | -2 to +4 |
+| `shadow` | integer | -2 to +4 |
+| `color` | integer | -4 to +4 |
+| `sharpness` | integer | -4 to +4 |
+| `noiseReduction` | integer | -4 to +4 |
+| `clarity` | integer | -5 to +5 |
+
+### Response (201)
+
+```json
+{
+  "message": "Recipe created successfully",
+  "recipe": {
+    "id": "uuid",
+    "title": "Classic Chrome Street",
+    ...
+  }
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Invalid fields or out-of-range settings |
+| 401 | `UNAUTHORIZED` | Not authenticated |

@@ -1,0 +1,36 @@
+---
+title: Toggle Collection Repost
+api: POST /api/collections/{id}/repost
+description: Repost or unrepost a collection. Acts as a toggle.
+---
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | The collection ID |
+
+## Behavior
+
+- If not reposted: creates a `collection_reposts` record.
+- If already reposted: deletes the record (unrepost).
+
+## Response
+
+```json
+{
+  "message": "Collection reposted",
+  "isReposted": true
+}
+```
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 404 | `NOT_FOUND` | Collection not found or deleted |

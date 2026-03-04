@@ -1,33 +1,90 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: API Reference
+description: "REST API endpoints for Recipe Room."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+## Base URL
 
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+| Environment | URL |
+|-------------|-----|
+| Development | `http://localhost:3000/api` |
+| Production | `https://recipe-room.vercel.app/api` |
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+Protected endpoints require a Bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer <jwt-token>
+```
+
+Tokens are obtained via the login endpoint and managed by Supabase Auth.
+
+## Error Format
+
+All errors follow a consistent structure:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid email format",
+    "details": { "field": "email" }
   }
-]
+}
 ```
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `VALIDATION_ERROR` | 400 | Invalid input data |
+| `UNAUTHORIZED` | 401 | Missing or invalid token |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `NOT_FOUND` | 404 | Resource not found |
+| `CONFLICT` | 409 | Duplicate resource |
+| `INTERNAL_ERROR` | 500 | Server error |
+
+## Pagination
+
+List endpoints support pagination via query parameters:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+
+Paginated responses include a `pagination` object:
+
+```json
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 150,
+    "totalPages": 8
+  }
+}
+```
+
+## Endpoint Groups
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api-reference/auth/register">
+    Register, login, logout
+  </Card>
+  <Card title="Users" icon="user" href="/api-reference/users/me">
+    Profiles, follow, followers
+  </Card>
+  <Card title="Recipes" icon="camera" href="/api-reference/recipes/list">
+    CRUD, favorites, featured
+  </Card>
+  <Card title="Posts" icon="image" href="/api-reference/posts/list">
+    CRUD, favorites, comments
+  </Card>
+  <Card title="Collections" icon="folder" href="/api-reference/collections/list">
+    CRUD, items, favorites
+  </Card>
+  <Card title="Other" icon="ellipsis" href="/api-reference/upload">
+    Upload, search, notifications
+  </Card>
+</CardGroup>

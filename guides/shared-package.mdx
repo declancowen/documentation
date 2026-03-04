@@ -1,0 +1,182 @@
+---
+title: Shared Package
+description: "The @recipe-room/shared package provides types, validation, constants, and utilities shared between web and mobile apps."
+---
+
+## Overview
+
+`packages/shared` is a pnpm workspace package consumed by both `apps/web` and `apps/mobile`. It ensures type safety and consistency across platforms.
+
+```
+packages/shared/src/
+├── api/            # API client, query keys, Supabase helpers
+├── constants/      # App constants, theme tokens, routes
+├── types/          # Database, API, and form types
+├── utils/          # Tag suggestions
+├── validation/     # Zod schemas
+└── index.ts        # Barrel export
+```
+
+## Types
+
+### Database Types (`types/database.ts`)
+
+Snake_case types matching the Supabase schema directly:
+
+```typescript
+import type { Recipe, Profile, Post, Collection } from '@recipe-room/shared';
+```
+
+Key types: `Profile`, `ProfileStats`, `Recipe`, `RecipeWithStats`, `RecipeImage`, `RecipeTag`, `Collection`, `CollectionWithStats`, `Post`, `PostWithStats`, `PostImage`, `PostTag`, `LightroomSettings`, `Follow`, `RecipeFavorite`, `PostFavorite`, `RecipeRepost`, `PostRepost`, `CollectionRepost`, `PostComment`, `PostCommentMention`, `RecipeCommentMention`, `Notification`, `NotificationWithActor`.
+
+### API Types (`types/api.ts`)
+
+CamelCase types for API request/response contracts:
+
+```typescript
+import type { RecipeListItem, PostDetailResponse, Pagination } from '@recipe-room/shared';
+```
+
+Includes request/response types for all endpoints: auth, users, recipes, posts, collections, saved items, reposts, creators, notifications, search, and uploads.
+
+### Form Types (`types/forms.ts`)
+
+Zod-inferred types for React Hook Form:
+
+```typescript
+import type { RecipeFormValues, PostFormValues, LoginFormValues } from '@recipe-room/shared';
+```
+
+## Validation Schemas
+
+All Zod schemas live in `validation/index.ts` and are used both client-side (form validation) and server-side (API route validation):
+
+```typescript
+import {
+  recipeSchema,
+  postSchema,
+  commentSchema,
+  loginSchema,
+  registerSchema,
+  profileSchema,
+  collectionSchema,
+  savedItemSchema,
+  fujifilmRecipeSettingsSchema,
+  lightroomSettingsSchema,
+  validatePaginationParams,
+  validateSortParam,
+} from '@recipe-room/shared';
+```
+
+### Fujifilm Settings Schema
+
+Validates all camera settings with proper ranges:
+
+| Setting | Range |
+|---------|-------|
+| `highlight` | -2 to +4 |
+| `shadow` | -2 to +4 |
+| `color` | -4 to +4 |
+| `sharpness` | -4 to +4 |
+| `noiseReduction` | -4 to +4 |
+| `clarity` | -5 to +5 |
+| `whiteBalanceRed/Blue` | -9 to +9 |
+| `kelvin` | 2500 to 10000 |
+
+## Constants
+
+### Fujifilm Options
+
+```typescript
+import {
+  FILM_SIMULATION_OPTIONS,  // 20 film simulations
+  DYNAMIC_RANGE_OPTIONS,     // DR100, DR200, DR400, Auto
+  GRAIN_EFFECT_OPTIONS,      // Off, Weak Small, Weak Large, Strong Small, Strong Large
+  COLOR_CHROME_EFFECT_OPTIONS, // Off, Weak, Strong
+  WHITE_BALANCE_MODE_OPTIONS,  // Auto, Daylight, Shade, etc.
+  FUJIFILM_CAMERA_OPTIONS,     // X-T5, X-T4, X100VI, etc.
+  FUJIFILM_SETTINGS_RANGES,    // Min/max/step for each setting
+  FUJIFILM_SETTINGS_DEFAULTS,  // Default values
+} from '@recipe-room/shared';
+```
+
+### Theme Tokens (`constants/theme.ts`)
+
+Design tokens for consistent styling across web and mobile:
+
+```typescript
+import { colors, spacing, borderRadius, fontSize, lightTheme, darkTheme } from '@recipe-room/shared';
+```
+
+### Routes (`constants/routes.ts`)
+
+Platform-specific route constants:
+
+```typescript
+import { WEB_ROUTES, MOBILE_ROUTES } from '@recipe-room/shared';
+
+WEB_ROUTES.RECIPE('abc-123')  // → "/recipes/abc-123"
+MOBILE_ROUTES.RECIPE('abc-123') // → "/recipe/abc-123"
+```
+
+### Other Constants
+
+```typescript
+import {
+  APP_NAME,           // "Recipe Room"
+  DEFAULT_PAGE_SIZE,  // 12
+  MAX_RECIPE_IMAGES,  // 10
+  MAX_IMAGE_SIZE_MB,  // 5
+  SORT_OPTIONS,       // ['recent', 'trending', 'popular', 'following']
+  POST_SORT_OPTIONS,  // ['recent', 'trending', 'following']
+} from '@recipe-room/shared';
+```
+
+## API Utilities
+
+### ApiClient
+
+Platform-agnostic HTTP client with automatic JSON handling and error parsing:
+
+```typescript
+import { createApiClient, ApiClient } from '@recipe-room/shared';
+
+const api = createApiClient('https://recipe-room.vercel.app');
+const recipes = await api.get<RecipesResponse>('/recipes?page=1&limit=12');
+```
+
+Methods: `get`, `post`, `patch`, `put`, `delete`. All include `credentials: 'include'` for cookie-based auth.
+
+### Query Keys
+
+React Query key factory for consistent cache management:
+
+```typescript
+import { queryKeys } from '@recipe-room/shared';
+
+queryKeys.recipes.list({ sort: 'popular' })  // ['recipes', 'list', { sort: 'popular' }]
+queryKeys.users.detail('filmshooter')         // ['users', 'detail', 'filmshooter']
+queryKeys.saved.status('recipe', 'uuid')      // ['saved', 'status', 'recipe', 'uuid']
+```
+
+### buildQueryString
+
+```typescript
+import { buildQueryString } from '@recipe-room/shared';
+
+buildQueryString({ page: 1, limit: 12, sort: 'popular' })
+// → "?page=1&limit=12&sort=popular"
+```
+
+## Tag Suggestions
+
+Comprehensive tag suggestion system for photography content:
+
+```typescript
+import { getTagSuggestions, ALL_TAG_SUGGESTIONS } from '@recipe-room/shared';
+
+getTagSuggestions('kodak', ['kodak portra 400'], 5);
+// → ['kodak gold 200', 'kodak ektar 100', ...]
+```
+
+Categories: `RECIPE_TAGS` (film stock names), `MOOD_TAGS`, `SEASON_TIME_TAGS`, `GENRE_TAGS`, `LOCATION_SUBJECT_TAGS`, `TECHNICAL_TAGS`, `COLOR_TAGS`.

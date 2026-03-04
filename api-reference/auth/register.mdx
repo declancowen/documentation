@@ -1,0 +1,56 @@
+---
+title: Register
+description: "Create a new user account."
+---
+
+## POST /api/auth/register
+
+Creates a new user account with Supabase Auth, creates a profile, and enrolls the user in Loops.so for email campaigns.
+
+### Request Body
+
+```json
+{
+  "email": "[email]",
+  "password": "securePassword123",
+  "firstName": "John",
+  "surname": "Doe",
+  "username": "johndoe",
+  "location": "New York, USA",
+  "bio": "Fujifilm enthusiast",
+  "instagramHandle": "johndoe_photo",
+  "avatarFile": "<base64 encoded image>"
+}
+```
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `email` | string | Yes | Valid email |
+| `password` | string | Yes | Min 8 characters |
+| `firstName` | string | Yes | 3-20 characters |
+| `surname` | string | Yes | 3-20 characters |
+| `username` | string | Yes | 3-20 characters, unique |
+| `location` | string | Yes | |
+| `bio` | string | Yes | Max 120 characters |
+| `instagramHandle` | string | No | |
+| `avatarFile` | string | No | Base64 image |
+
+### Response (201)
+
+```json
+{
+  "user": {
+    "id": "uuid",
+    "email": "[email]",
+    "username": "johndoe"
+  },
+  "message": "Account created successfully"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 400 | `VALIDATION_ERROR` | Missing or invalid fields |
+| 409 | `CONFLICT` | Email or username already exists |

@@ -1,0 +1,28 @@
+---
+title: Delete Recipe
+description: "Delete a recipe."
+---
+
+## DELETE /api/recipes/[id]
+
+Soft-deletes a recipe by setting `is_deleted = true`. Only the recipe owner can delete it.
+
+<Warning>The client should show a confirmation modal before calling this endpoint.</Warning>
+
+<Note>Requires authentication. Owner only.</Note>
+
+### Response (200)
+
+```json
+{
+  "message": "Recipe deleted successfully"
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 401 | `UNAUTHORIZED` | Not authenticated |
+| 403 | `FORBIDDEN` | Not the recipe owner |
+| 404 | `NOT_FOUND` | Recipe not found |

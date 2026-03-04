@@ -1,0 +1,55 @@
+---
+title: Introduction
+description: "Developer documentation for Recipe Room — a Fujifilm film simulation recipe sharing platform."
+---
+
+## What is Recipe Room?
+
+Recipe Room is a social platform for sharing Fujifilm camera film simulation recipes. Users create, share, and discover custom film simulation settings for Fujifilm X-series cameras, organize them into collections, and engage with the community through posts, follows, and favorites.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Web Frontend | Next.js 14 (App Router), React 18, TypeScript |
+| Mobile | Expo SDK 54, expo-router, NativeWind |
+| Backend | Next.js API Routes (serverless on Vercel) |
+| Database | PostgreSQL via Supabase |
+| Storage | Supabase Storage (avatars, recipe-images, post-images) |
+| Auth | Supabase Auth (email/password) |
+| Email | Loops.so |
+| UI | shadcn/ui + Tailwind CSS |
+| State | React Query, React Context, React Hook Form + Zod |
+| Testing | Jest, React Testing Library, fast-check |
+
+## Monorepo Structure
+
+```
+recipe-room-monorepo/
+├── apps/
+│   ├── web/          # Next.js 14 web application
+│   └── mobile/       # React Native (Expo) iOS app
+├── packages/
+│   └── shared/       # Shared types, validation, constants
+├── docs/             # Documentation
+└── supabase/         # Database schema and migrations
+```
+
+The monorepo is managed with pnpm workspaces. The `@recipe-room/shared` package provides types, Zod validation schemas, constants, and API utilities shared between web and mobile.
+
+## Core Concepts
+
+<CardGroup cols={2}>
+  <Card title="Film Simulation Recipes" icon="camera">
+    Complete Fujifilm X-series camera settings including film simulation, dynamic range, grain, white balance, tone curve, color, sharpness, noise reduction, and clarity.
+  </Card>
+  <Card title="Posts" icon="image">
+    Photo posts with multi-image support, tags, camera metadata, and optional recipe linking.
+  </Card>
+  <Card title="Collections" icon="folder">
+    User-created groupings of saved recipes and posts, with public/private visibility.
+  </Card>
+  <Card title="Social" icon="users">
+    Follow creators, favorite content, comment with @mentions, and receive notifications.
+  </Card>
+</CardGroup>

@@ -1,0 +1,77 @@
+---
+title: Building & Deploying
+description: "EAS Build profiles and App Store submission for the Recipe Room iOS app."
+---
+
+## EAS Build Profiles
+
+The mobile app uses Expo Application Services (EAS) for building and submitting to the App Store.
+
+### Build Profiles
+
+| Profile | Purpose | Command |
+|---------|---------|---------|
+| `development` | Dev client with debugging | `pnpm build:dev` |
+| `preview` | TestFlight / internal testing | `pnpm build:preview` |
+| `production` | App Store release | `pnpm build:prod` |
+
+### Running Builds
+
+From the monorepo root:
+
+```bash
+# Development build
+pnpm mobile:build:dev
+
+# Preview build (TestFlight)
+pnpm mobile:build:preview
+
+# Production build
+pnpm mobile:build
+
+# Production build + auto-submit to App Store
+pnpm mobile:build
+```
+
+Or from `apps/mobile/`:
+
+```bash
+eas build --profile production --platform ios
+eas build --profile production --platform ios --auto-submit
+```
+
+### Check Build Status
+
+```bash
+pnpm mobile:build:status
+# or
+eas build:list
+```
+
+## App Store Submission
+
+Submit a completed build:
+
+```bash
+pnpm mobile:submit
+# or
+eas submit --platform ios --profile production
+```
+
+## Configuration
+
+Build configuration lives in `apps/mobile/eas.json`. App configuration is in `apps/mobile/app.config.js` which reads from `app.json` and environment variables.
+
+The `EXPO_CONFIG_MODE` environment variable controls which config is used:
+- `development` — Expo Go compatible, development settings
+- `production` — EAS Build, production bundle identifier and settings
+
+## Prebuild
+
+If you need native project files (for custom native modules):
+
+```bash
+cd apps/mobile && expo prebuild
+```
+
+This generates `ios/` and `android/` directories. These are gitignored since EAS handles native builds.

@@ -1,0 +1,86 @@
+---
+title: Notifications
+description: "Manage user notifications."
+---
+
+## GET /api/notifications
+
+Returns the authenticated user's notifications.
+
+<Note>Requires authentication.</Note>
+
+### Query Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `page` | 1 | Page number |
+| `limit` | 20 | Items per page |
+
+### Notification Types
+
+| Type | Trigger |
+|------|---------|
+| `tag_post` | User tagged in a post |
+| `tag_recipe` | User tagged in a recipe |
+| `mention_post_comment` | User @mentioned in a post comment |
+| `mention_recipe_comment` | User @mentioned in a recipe comment |
+
+### Response (200)
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "type": "mention_post_comment",
+      "actor": {
+        "id": "uuid",
+        "username": "janedoe",
+        "avatarUrl": "https://..."
+      },
+      "contentType": "post",
+      "contentId": "uuid",
+      "commentId": "uuid",
+      "isRead": false,
+      "createdAt": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": { ... }
+}
+```
+
+---
+
+## GET /api/notifications/unread-count
+
+Returns the count of unread notifications.
+
+### Response (200)
+
+```json
+{
+  "count": 5
+}
+```
+
+---
+
+## PATCH /api/notifications/read
+
+Marks notifications as read.
+
+### Request Body
+
+```json
+{
+  "notificationIds": ["uuid1", "uuid2"]
+}
+```
+
+### Response (200)
+
+```json
+{
+  "message": "Notifications marked as read"
+}
+```

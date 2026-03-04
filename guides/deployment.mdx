@@ -1,0 +1,138 @@
+---
+title: Deployment
+description: "How Recipe Room is deployed across web and mobile platforms."
+---
+
+## Web Deployment (Vercel)
+
+The web app deploys to Vercel automatically on push to the main branch.
+
+### How It Works
+
+```
+Push to main → Vercel Build → Next.js Build → Deploy to Edge
+```
+
+- API routes run as serverless functions on Vercel's edge network
+- Static pages are pre-rendered at build time
+- Images are optimized via `next/image` and Vercel's image CDN
+
+### Environment Variables
+
+Set these in Vercel's project settings (Settings → Environment Variables):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (safe for client) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-only) |
+| `LOOPS_API_KEY` | No | Loops.so API key for email notifications |
+
+<Warning>
+  `SUPABASE_SERVICE_ROLE_KEY` must never be prefixed with `NEXT_PUBLIC_`. It is only used in API routes (server-side).
+</Warning>
+
+### Build Command
+
+```bash
+pnpm build:web
+```
+
+Vercel auto-detects the monorepo structure and builds from `apps/web/`.
+
+## Mobile Deployment (EAS)
+
+The iOS app is built and submitted via Expo Application Services (EAS).
+
+### Build Profiles
+
+Defined in `apps/mobile/eas.json`:
+
+| Profile | Purpose | Command |
+|---------|---------|---------|
+| `development` | Dev client with debugging tools | `eas build --profile development --platform ios` |
+| `preview` | TestFlight / internal testing | `eas build --profile preview --platform ios` |
+| `production` | App Store release | `eas build --profile production --platform ios` |
+
+### Submitting to App Store
+
+```bash
+# Build and auto-submit
+eas build --profile production --platform ios --auto-submit
+
+# Submit an existing build
+eas submit --platform ios --profile production
+```
+
+### Mobile Environment Variables
+
+Set in `apps/mobile/.env` locally, and in EAS secrets for CI builds:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `EXPO_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+| `EXPO_PUBLIC_LOOPS_API_KEY` | No | Loops.so API key |
+| `EXPO_CONFIG_MODE` | Yes | `development` or `production` |
+
+`EXPO_CONFIG_MODE` controls which app config is used — `development` for Expo Go compatibility, `production` for EAS builds with the production bundle identifier.
+
+## Loops.so Integration
+
+Recipe Room uses [Loops.so](https://loops.so) for transactional emails and audience management. The integration is optional — if `LOOPS_API_KEY` is not set, all Loops operations are silently skipped.
+
+### What It Does
+
+| Event | Action |
+|-------|--------|
+| User registers | Creates a contact in Loops audience, sends welcome email |
+| User deletes account | Removes contact from Loops audience |
+
+### How It Works
+
+The Loops client lives in `apps/web/src/lib/loops/client.ts`. It's a server-side singleton that wraps the Loops REST API:
+
+```typescript
+import { registerUserInLoops, sendWelcomeEmail } from '@/lib/loops/client';
+
+// Called during registration
+await registerUserInLoops(email, firstName, lastName, userId);
+await sendWelcomeEmail(email, firstName);
+```
+
+All Loops calls are wrapped in try/catch — failures are logged but never block the primary operation (registration, account deletion, etc.).
+
+### Configuring Loops
+
+1. Create an account at [loops.so](https://loops.so)
+2. Create a transactional email template with ID `welcome-email`
+3. Add the `firstName` data variable to the template
+4. Copy your API key to `LOOPS_API_KEY` in your environment
+
+## Middleware
+
+The Next.js middleware (`apps/web/src/middleware.ts`) handles route protection and auth redirects:
+
+### Protected Routes
+
+These routes redirect to `/login` if the user is not authenticated:
+
+- `/me`
+- `/settings`
+- `/recipes/new`
+- `/collections/new`
+- `/favorites`
+- Any route containing `/edit`
+
+### Auth Routes
+
+These routes redirect to `/` if the user is already authenticated:
+
+- `/login`
+- `/register`
+
+### How It Works
+
+The middleware uses `supabase.auth.getUser()` to validate the JWT on every request to protected or auth routes. Public routes skip the auth check entirely for performance.
+
+When redirecting to login, the original path is preserved as a `redirect` query parameter so the user returns to their intended destination after logging in.

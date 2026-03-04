@@ -1,0 +1,45 @@
+---
+title: Get User
+description: "Get a user's public profile."
+---
+
+## GET /api/users/[id]
+
+Returns a user's public profile with stats and follow status.
+
+### Path Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | UUID | User ID |
+
+### Response (200)
+
+```json
+{
+  "id": "uuid",
+  "username": "johndoe",
+  "firstName": "John",
+  "surname": "Doe",
+  "location": "New York, USA",
+  "bio": "Fujifilm enthusiast",
+  "instagramHandle": "johndoe_photo",
+  "avatarUrl": "https://storage.supabase.co/...",
+  "coverPhotoUrl": "https://storage.supabase.co/...",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "stats": {
+    "followerCount": 150,
+    "followingCount": 75,
+    "recipeCount": 25,
+    "postCount": 40,
+    "collectionCount": 5
+  },
+  "isFollowing": false
+}
+```
+
+### Errors
+
+| Status | Code | Reason |
+|--------|------|--------|
+| 404 | `NOT_FOUND` | User not found |
