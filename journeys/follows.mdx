@@ -9,7 +9,7 @@ Standard social follow system. Following a user adds their content to your Home 
 
 ## User Flow
 
-User taps `FollowButton` on any profile card, detail header, or user list → optimistic UI update → API call.
+User taps `FollowButton` on any profile card, detail header, or user list → local optimistic UI toggle (component-level state) → API call → cache invalidation on success. On error, the component reverts to previous state and shows a toast.
 
 ## Screens
 
@@ -35,11 +35,11 @@ The mobile app calls Supabase directly — `supabase.from('follows').insert/dele
 
 | Hook | Behavior |
 |------|----------|
-| `useFollowUser()` | Optimistic update: increments follower/following counts, sets `is_following: true`, calls `supabase.from('follows').insert` |
-| `useUnfollowUser()` | Reverse of above, calls `supabase.from('follows').delete` |
-| `useToggleFollow()` | Convenience wrapper that calls follow or unfollow based on current state |
+| `useFollowUser()` | Insert-only: calls `supabase.from('follows').insert`, handles duplicate gracefully (code 23505). No React Query optimistic update — invalidates caches on success. The `FollowButton` component manages its own local optimistic state. |
+| `useUnfollowUser()` | Delete-only: calls `supabase.from('follows').delete`. Same pattern — no hook-level optimistic update, component handles local state. |
+| `useToggleFollow()` | Convenience wrapper: calls follow or unfollow based on `isFollowing` param. Same invalidation pattern. |
 
-All three invalidate `queryKeys.users.profile` and `queryKeys.users.followers` on success.
+All three invalidate `queryKeys.users.profile`, `queryKeys.users.followers`, `queryKeys.users.following`, and all `['profile', 'data']` queries on success (via shared `invalidateFollowQueries` helper).
 
 `useFollowers(userId)` / `useFollowing(userId)` — Infinite query with `FOLLOWERS_PAGE_SIZE = 30`, calls `get_user_followers` / `get_user_following` RPC.
 

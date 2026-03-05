@@ -21,6 +21,32 @@ Bookmark system. Users save recipes, posts, or collections, then optionally orga
   </Step>
 </Steps>
 
+## Saved Tab Layout
+
+`app/(tabs)/saved.tsx` — requires authentication (`AuthGuard`). Uses the shared header layout (RECIPE ROOM / Plus / NotificationBell).
+
+### Grid Layout
+
+2-column grid with 12px gap, 16px padding. Each card is a rounded-corner (16px) image thumbnail with metadata below.
+
+The first card is always "Saved Items" — the uncategorized bucket containing all saved items not assigned to any collection. It shows:
+- Latest saved item's image (or `Bookmark` icon placeholder)
+- "Saved Items" label
+- `Lock` icon + "Private" + item count
+
+Remaining cards are user-created collections, each showing:
+- Latest item image (or `FolderOpen` icon placeholder)
+- Collection name
+- `Globe` icon + "Public" or `Lock` icon + "Private" + item count
+
+### Loading State
+
+4 skeleton cards (2×2 grid) with grey rounded rectangles + text placeholders.
+
+### Empty State
+
+When no collections exist and uncategorized count is 0: `EmptyState` with `FolderOpen` icon, "No collections yet", "Create a collection to organize your favorite recipes", and "Create Collection" action button.
+
 ## Screens
 
 | Screen | Purpose |

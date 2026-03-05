@@ -10,19 +10,61 @@ The profile is the hub for a user's content, stats, and social connections. Supp
 ## User Flow — View
 
 - Own profile: Profile tab → `app/(tabs)/profile.tsx`
-- Other user: Tap any username/avatar → `app/connections/[username].tsx`
-- Shows: avatar, cover photo, name, username, bio, location, Instagram handle, stats (recipes, posts, collections, followers, following), content tabs
+- Other user: Tap any username/avatar → navigates via `ProfileProvider.navigateToProfile(username)` which sets `viewingUsername` in context
+- Shows: `ProfileCard` (avatar, name, username, bio, location, Instagram handle, stats), content tabs
+
+### Profile Header
+
+The header bar changes based on context:
+- Own profile: `Plus` icon (left) → `/create`, `@username` (center), `NotificationBell` (right)
+- Other user: `ChevronLeft` icon (left) → `resetToOwnProfile()`, `@username` (center), empty (right)
+
+### Content Tabs
+
+Three icon-only tabs below the profile card (active tab has 2px bottom border):
+
+| Tab | Icon | Content | Empty State |
+|-----|------|---------|-------------|
+| Posts | `ImageIcon` | User's posts | `NoPosts` |
+| Recipes | `Film` | User's recipes | `NoRecipes` |
+| Collections | `LibraryBig` | User's public collections | "No collections yet" |
+
+Default tab is Posts. Each tab shows content in a `MasonryGrid` with `variant="imageOnly"` cards, sorted by `created_at` descending. Collections are loaded separately in background via dedicated hooks for faster initial profile load.
+
+### Loading State
+
+`ProfilePageSkeleton` — centered avatar circle (120px), name/username placeholders, 3-column stats row, bio lines, action button, then 3 tab placeholders + `MasonryGridSkeleton`.
+
+### Unauthenticated State
+
+If not logged in and no `viewingUsername`, shows "Sign in to view your profile" with Sign In / Sign Up buttons.
 
 ## User Flow — Edit
 
-Own profile → tap edit → `app/settings.tsx`:
-- Edit username (with real-time availability check via `useUsernameCheck`), first name, surname, location, bio, Instagram handle, avatar, cover photo
+Own profile → Settings gear or navigate to `app/settings.tsx`:
+
+### Settings Tabs
+
+Two text tabs: Profile and Account.
+
+**Profile Tab:**
+- Profile photo (`ProfileImagePicker`, 80px)
+- First name, surname, username (with real-time availability check — green checkmark when available, red alert when taken, spinner while checking), location, bio (120 char limit with counter), Instagram handle
+- Save Changes button (disabled while updating or username unavailable)
+- All changes confirmed via `Alert.alert` before submission
 - Submit → `supabase.rpc('update_user_profile', { p_user_id, ... })` directly
+
+**Account Tab:**
+- Email display + Change button → inline email change form with confirmation
+- Appearance → `ThemeSelector` (light/dark/system)
+- Change Password → new password + confirm fields
+- Sign Out (destructive confirmation)
+- Delete Account (destructive confirmation, red text)
 
 ## Password & Email Changes
 
-- **Password change:** From `app/settings.tsx`, calls Supabase auth `updateUser({ password })` directly
-- **Email change:** Calls `updateUser({ email })` → triggers double-confirmation flow (see [Login journey](/journeys/login) for full callback chain)
+- **Password change:** From `app/settings.tsx`, calls Supabase auth `updateUser({ password })` directly. Minimum 8 characters, must match confirmation.
+- **Email change:** Calls `updateUser({ email })` → triggers double-confirmation flow (see [Login journey](/journeys/login) for full callback chain). Shows "Confirmation email sent to your new address" toast on success.
 
 ## Account Deletion
 
@@ -30,7 +72,7 @@ Own profile → tap edit → `app/settings.tsx`:
 - Cascading deletion of all user content
 - Removes user from Loops.so (via Loops API call)
 - Clears session and navigates to login
-- Requires `ConfirmDeleteModal` confirmation
+- Requires `Alert.alert` destructive confirmation
 
 ## Screens
 
@@ -62,17 +104,22 @@ Own profile → tap edit → `app/settings.tsx`:
 
 | Hook | Purpose |
 |------|---------|
-| `useProfileData` | Profile data fetching |
+| `useProfileData(username)` | Profile data by username (infinite query via `get_user_profile_data` RPC) |
+| `useProfileDataById(userId)` | Profile data by ID (for own profile, via `get_user_profile_data_by_id` RPC) |
+| `useProfileCollections(username)` | Collections loaded separately in background (via `get_user_profile_collections` RPC) |
+| `useProfileCollectionsById(userId)` | Collections by ID (via `get_user_profile_collections_by_id` RPC) |
+| `useUserProfile(userId)` | Basic profile + follow status (direct table query, not RPC) |
 | `useProfileUpdate` | Profile edit mutations |
-| `useUser` | User data |
-| `useTabAvatar` | Avatar URL for tab bar icon |
-| `useUsernameCheck` | Debounced username availability |
-| `profileTransforms` | Data transformation utilities |
+| `useTabAvatar(userId)` | Lightweight avatar-only query for tab bar icon |
+| `useUserByUsername(username)` | Basic profile lookup by username |
+| `useSearchUsers(query)` | User search for @mentions and tagging |
+| `useUsernameCheck` | Debounced username availability check via RPC |
+| `profileTransforms` | Data transformation utilities (camelCase RPC → snake_case mobile) |
 
 ## Data Access Pattern
 
 <Note>
-The mobile app calls Supabase RPC functions directly for profile data — `supabase.rpc('get_user_profile_data')`, `supabase.rpc('update_user_profile')`, etc. The web API routes exist for the web client (Phase 2).
+The mobile app calls Supabase RPC functions directly for profile data — `supabase.rpc('get_user_profile_data')`, `supabase.rpc('update_user_profile')`, etc. However, `useUserProfile(userId)` in `useUser.ts` does a direct table query (`supabase.from('profiles').select(...)`) plus a separate follow status check — it does NOT use an RPC. The web API routes exist for the web client (Phase 2).
 </Note>
 
 ## Web API Routes (Phase 2)
@@ -114,6 +161,8 @@ The mobile app calls Supabase RPC functions directly for profile data — `supab
 | `instagram_handle` | text | Optional |
 | `avatar_url` | text | Optional |
 | `cover_photo_url` | text | Optional |
+| `created_at` | timestamptz | Default `now()` |
+| `updated_at` | timestamptz | Default `now()`, auto-updated via trigger |
 | `recipe_count` | int | Denormalized, default 0 |
 | `post_count` | int | Denormalized, default 0 |
 | `collection_count` | int | Denormalized, default 0 |

@@ -237,7 +237,7 @@ delete_recipe(p_recipe_id uuid, p_user_id uuid)
 ```
 
 <Note>
-  `create_post` does NOT accept `p_tagged_user_ids` — unlike `create_recipe`, post tagging is handled separately. `delete_recipe` returns `image_urls` so the client can clean up storage after soft-delete.
+  `create_post` does NOT accept `p_tagged_user_ids` — unlike `create_recipe`, post tagging is handled separately. `delete_recipe` performs a hard delete (cascading deletion of all related data: images, tags, tagged users, comments, mentions, favorites, reposts, lightroom settings, saved items, notifications) and returns `image_urls` so the client can clean up storage. `delete_post` performs a soft delete (`is_deleted = true`).
 </Note>
 
 ### delete_user_account

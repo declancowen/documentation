@@ -124,6 +124,7 @@ const { page, limit, offset } = parsePagination({ page: pageParam, limit: limitP
 
 - Soft deletes: `is_deleted` flag on recipes, posts, collections
 - Always filter: `WHERE is_deleted = FALSE`
+- Note: `delete_post` is a soft delete (`is_deleted = true`), but `delete_recipe` is a hard delete (cascading deletion of all related data). Both posts and recipes have the `is_deleted` column, but the recipe RPC bypasses it.
 - Denormalized counters on `profiles` table (recipe_count, post_count, etc.) maintained by triggers
 - No database views — all complex queries use RPC functions (see [RPC Functions](/guides/rpc-functions))
 

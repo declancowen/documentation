@@ -7,24 +7,62 @@ description: "The two main content feeds — Following (Home) and Discover — p
 
 Two main content feeds power the app: the Following feed (Home tab, authenticated only) and the Discover feed (all content, visible to everyone). Both use masonry grid layouts with infinite scroll.
 
+## Shared Header Layout
+
+All main tabs share a consistent header:
+- Center: "RECIPE ROOM" in Courier font, uppercase, bold, letter-spacing 2
+- Left: `Plus` icon → navigates to `/create` (authenticated only)
+- Right: `NotificationBell` component (authenticated only)
+
 ## Home Tab — Following Feed
 
-`app/(tabs)/index.tsx` — shows posts + recipes from users you follow, interleaved by `created_at`. Only visible when authenticated.
+`app/(tabs)/index.tsx` — shows posts + recipes from users you follow, interleaved by `created_at`. Only visible when authenticated; unauthenticated users are redirected to Discover.
+
+### Feed Card Layout
+
+The Following feed uses `FeedPostCard` — an Instagram-style vertical layout:
+- Full-width image with dynamic height (60%–125% of screen width, based on aspect ratio)
+- Author overlay (avatar + username + content type icon) on top-left with gradient
+- Multi-image posts show `ImageCarousel` with pagination dots; single-image posts use `BaseCard`
+- Double-tap on image triggers like with animated heart overlay (80px white heart, scale + fade)
+- Below image: action row (Heart, MessageCircle, SaveButton), linked recipe tag (if post links to a recipe), caption with username prefix, "View all N comments" link, relative timestamp
+- Loading state: `FeedSkeleton` (two `FeedPostCardSkeleton` stacked)
 
 ### Double-Tap Home Tab Reset
 
 The tabs layout implements double-tap detection on the Home tab:
 - Tracks `lastHomeTabTapRef` with `DOUBLE_TAP_DELAY = 300ms`
 - On double-tap: calls `(global as any).homeTabDoubleTap?.()`
-- The Home screen registers a handler on `global.homeTabDoubleTap` to reset the feed to the Following view
+- The Home screen registers a handler on `global.homeTabDoubleTap` to scroll the feed to top
 
 <Note>
 This pattern is unconventional (using `global` as an event bus) but works because React Native runs in a single JS context.
 </Note>
 
+### Saved Item Pre-loading
+
+The Home feed pre-loads all saved item IDs at the feed level via `useSavedItemIds` so every `SaveButton` renders with the correct bookmark state from the first frame, avoiding a flash from unfilled → filled.
+
 ## Discover Tab
 
-`app/(tabs)/discover.tsx` — all content, sortable by recent/trending/popular. Visible to everyone.
+`app/(tabs)/discover.tsx` — all content, visible to everyone.
+
+### Discover Sub-Tabs
+
+Two sub-tabs with icon + label:
+
+| Tab | Icon | Sort Parameter | Algorithm |
+|-----|------|---------------|-----------|
+| Discover | `Compass` | `trending` | Favorite count in last 24 hours |
+| Popular | `Heart` | `popular` | Total favorite count (all time) |
+
+Active tab has a 2px bottom border in `foreground` color. Both tabs call `get_discover_content_list` RPC with different `p_sort` values.
+
+### Discover Card Layout
+
+Cards use `ContentCard` with `variant="imageOnly"` — cover image only, no text overlays. Recipe items show a small `Film` icon badge in the top-right corner (`showRecipeIcon={item.content_type === 'recipe'}`). Cards are displayed in a `VirtualizedMasonryGrid` (two-column masonry layout with fixed 300px card height).
+
+Loading state: `MasonryGridSkeleton` (two-column grid of grey placeholder blocks).
 
 ## Screens & Components
 
@@ -48,8 +86,8 @@ This pattern is unconventional (using `global` as an event bus) but works becaus
 
 | Hook | Purpose |
 |------|---------|
-| `useRecipes` | Recipe list fetching with filters |
-| `usePosts` | Post list fetching with filters |
+| `useDiscoverContent` | Discover feed fetching (mixed recipes + posts). `useRecipes` is a deprecated alias. |
+| `usePosts` | Following feed fetching (posts + recipes from followed users) |
 | `useInfiniteScroll` | Pagination/infinite scroll logic |
 | `useScrollPosition` | Scroll tracking for tab bar hide/show |
 | `useTabBarScroll` | Context for animated tab bar visibility |
@@ -57,7 +95,9 @@ This pattern is unconventional (using `global` as an event bus) but works becaus
 
 ## Tab Bar Behavior
 
-`AnimatedTabBar` (`src/components/navigation/AnimatedTabBar.tsx`) — custom animated tab bar that hides on scroll down, shows on scroll up (via `tabBarTranslateY` shared value from `TabBarScrollContext`). Uses React Native Reanimated for smooth 60fps animations.
+`AnimatedTabBar` (`src/components/navigation/AnimatedTabBar.tsx`) — custom animated tab bar that hides on scroll down, shows on scroll up (via `tabBarTranslateY` shared value from `TabBarScrollContext`). Uses React Native Reanimated for smooth 60fps animations. Positioned absolutely at the bottom of the screen (height: 80px with 20px bottom padding for safe area).
+
+The tab bar hides the Home and Saved tabs for unauthenticated users via the `hiddenRoutes` prop. Tab icons are configured in `app/(tabs)/_layout.tsx` — see [Common Components](/journeys/common-components) for the full icon mapping.
 
 ## Data Access Pattern
 
@@ -79,8 +119,9 @@ There is no `get_creators_list` or `get_recipes_list` RPC function in the databa
 
 ## React Query Configuration
 
-- `staleTime: 5 minutes` (set in root QueryClient)
-- `retry: 2`
+- `staleTime: 30000` (30 seconds) on both `useDiscoverContent` and `usePosts` hooks
+- `gcTime: 300000` (5 minutes) — keeps data in cache after becoming stale
+- Page size: 12 items per page (both feeds)
 - Cache cleared on logout (`queryClient.clear()`)
 - `freezeOnBlur: false` for Home tab specifically (prevents skeleton getting stuck when query resolves while tab is blurred)
 

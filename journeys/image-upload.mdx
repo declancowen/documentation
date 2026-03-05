@@ -53,7 +53,8 @@ All 4 buckets are public with no `file_size_limit` or `allowed_mime_types` restr
 ## Storage RLS Policies
 
 - All buckets: Public SELECT (read)
-- All buckets: Authenticated INSERT (upload)
+- `avatars`, `post-images`, `cover-photos`: Owner-only INSERT (upload to own folder via `auth.uid() = storage.foldername(name)[1]`)
+- `recipe-images`: Authenticated INSERT (any authenticated user can upload — no folder ownership check)
 - All buckets: Owner-only UPDATE and DELETE (via `storage.foldername(name)[1] = auth.uid()`)
 
 ## Mobile Utilities

@@ -95,7 +95,7 @@ Update Form State → Display Preview
 ### Follow User (Mobile)
 
 ```
-Tap Follow → Optimistic UI Update (all caches) →
-supabase.from('follows').insert() → Confirm/Rollback →
+Tap Follow → FollowButton local state update (instant UI) →
+supabase.from('follows').insert() → On success: invalidate profile/follower queries →
 Trigger updates follower_count + following_count
 ```

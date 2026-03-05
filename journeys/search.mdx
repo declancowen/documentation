@@ -14,20 +14,50 @@ Global search across all content types using PostgreSQL's `pg_trgm` extension fo
     Tap Search tab → `app/(tabs)/search.tsx`
   </Step>
   <Step title="Type Query">
-    Debounced search (via `useDebounce`) → `supabase.rpc('global_search', { p_query, p_type_filter, p_limit })`
+    Search input with typewriter placeholder animation cycling through phrases ("Classic Chrome recipes", "Portrait photography", "Street photography", "Fujifilm X-T5", etc.). Minimum 2 characters to trigger search. Debounced via `useDebounce` → `supabase.rpc('global_search', { p_query, p_type_filter, p_limit })`.
+  </Step>
+  <Step title="Filter by Type">
+    Icon-only filter tabs appear once query ≥ 2 characters. Active tab has 2px bottom border.
   </Step>
   <Step title="View Results">
-    Results grouped by type (recipes, posts, collections, users). Optional type filter to narrow results.
+    Content tabs (post/recipe/collection) show results in `VirtualizedMasonryGrid` with `variant="imageOnly"` cards. Creator tab shows `CreatorCardList` (horizontal layout with avatar, name, follow button) in a `FlatList`.
   </Step>
 </Steps>
 
+## Search Scopes
+
+Four filter tabs, icon-only (matching profile tab style):
+
+| Tab | Icon | Content | View |
+|-----|------|---------|------|
+| Posts | `ImageIcon` | Posts only | Masonry grid |
+| Recipes | `Film` | Recipes only | Masonry grid |
+| Collections | `LibraryBig` | Collections only | Masonry grid |
+| Creators | `Users` | User profiles | List view (`CreatorCardList`) |
+
+Default tab is Posts. The `typeFilter` parameter is passed to the `global_search` RPC so it only scans the relevant table(s).
+
+## Empty & Loading States
+
+- Before typing: centered `Search` icon (48px) + "Search for recipes, posts, collections, or creators"
+- Loading: `MasonryGridSkeleton` with 6 items
+- No results: `EmptyState` with "No results found" / "We couldn't find anything for [query]"
+- No results for specific tab: `EmptyState` with "No [type]s match [query]"
+
 ## Components
 
-`CreatorCard` (user results), `ContentCard` (recipe/post results)
+| Component | Purpose |
+|-----------|---------|
+| `ContentCard` | Recipe/post/collection results (masonry grid, `variant="imageOnly"`) |
+| `CreatorCard` | Creator result in masonry grid |
+| `CreatorCardList` | Creator result in list view (avatar, name, follow button) |
+| `VirtualizedMasonryGrid` | Masonry layout for content results |
+| `MasonryGridSkeleton` | Loading skeleton |
+| `EmptyState` | No results state |
 
 ## Context
 
-`SearchProvider` (`src/context/SearchContext.tsx`) — manages search query state, results, filters.
+`SearchProvider` (`src/context/SearchContext.tsx`) — manages search query state, results, filters. Also exposes `openSearch(query)` used by `MetadataPills` to navigate to search with a pre-filled query.
 
 ## Hooks
 

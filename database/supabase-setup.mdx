@@ -18,7 +18,7 @@ description: "Setting up the Supabase project for Recipe Room."
     Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it. This creates all tables, indexes, RLS policies, storage buckets, and triggers.
   </Step>
   <Step title="Verify tables">
-    In Table Editor, confirm you see: `profiles`, `recipes`, `recipe_images`, `recipe_tags`, `posts`, `post_images`, `post_tags`, `collections`, `collection_saved_items`, `saved_items`, `follows`, `recipe_favorites`, `post_favorites`, `post_comments`, `recipe_comments`, `notifications`.
+    In Table Editor, confirm you see all 23 tables: `profiles`, `recipes`, `recipe_images`, `recipe_tags`, `recipe_tagged_users`, `recipe_favorites`, `recipe_reposts`, `recipe_comments`, `recipe_comment_mentions`, `posts`, `post_images`, `post_tags`, `post_tagged_users`, `post_favorites`, `post_reposts`, `post_comments`, `post_comment_mentions`, `collections`, `collection_saved_items`, `saved_items`, `follows`, `notifications`, `lightroom_settings`.
   </Step>
   <Step title="Verify storage buckets">
     Go to Storage and confirm: `avatars`, `cover-photos`, `recipe-images`, `post-images`.
@@ -27,16 +27,16 @@ description: "Setting up the Supabase project for Recipe Room."
 
 ## Storage Bucket Configuration
 
-Configure each bucket with these settings:
+All 4 buckets are public with no `file_size_limit` or `allowed_mime_types` restrictions at the bucket level:
 
-| Bucket | Public | Max Size | MIME Types |
-|--------|--------|----------|------------|
-| `avatars` | Yes | 5 MB | image/jpeg, image/png, image/webp |
-| `cover-photos` | Yes | 5 MB | image/jpeg, image/png, image/webp |
-| `recipe-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
-| `post-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+| Bucket | Public | Bucket-Level Restrictions |
+|--------|--------|--------------------------|
+| `avatars` | Yes | None |
+| `cover-photos` | Yes | None |
+| `recipe-images` | Yes | None |
+| `post-images` | Yes | None |
 
-Storage policies enforce that users can only upload to their own folder (`auth.uid()` matches the folder name).
+File size validation (max 5 MB) and MIME type checking (JPEG, PNG, WebP) happen client-side before upload — not at the bucket level. Storage RLS policies enforce that users can only upload to their own folder (`auth.uid()` matches the folder name).
 
 ## Environment Variables
 

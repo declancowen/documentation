@@ -48,7 +48,7 @@ Submit → `supabase.rpc('update_post', {...})`.
 
 ## Hooks
 
-`usePosts` (`src/hooks/api/usePosts.ts`), `useComments`, `useImageUpload`, `useSaveStatus`
+`usePosts` (`src/hooks/api/usePosts.ts`), `usePostImages` (lazy-load images for carousel on swipe), `useComments`, `useImageUpload`, `useSaveStatus`
 
 ## Data Access Pattern
 
@@ -119,6 +119,10 @@ Comment counts also propagate across all list views when a comment is added (see
 ### `update_post` NULL Semantics
 
 All optional parameters use NULL to mean "no change." If `p_recipe_id` is NULL, the existing `recipe_id` is preserved. If `p_collection_id` is provided, the post is linked to that collection (existing collection links are replaced). Tags are replaced wholesale when `p_tags` is non-NULL.
+
+<Warning>
+There is currently no way to explicitly unlink a recipe from a post via `update_post` — passing NULL for `p_recipe_id` means "no change," not "clear the link." The storyboard references `p_clear_recipe` and `p_clear_collection` boolean flags, but these do not exist in the live database function. This is a known limitation.
+</Warning>
 
 <Note>
 Migration `20260221_fix_update_post_ambiguous_id.sql` fixed column ambiguity in the `update_post` function — the RETURNS TABLE column names conflicted with the `posts` table columns in the UPDATE/SELECT statements. The fix uses table-qualified column references (`posts.id`, `posts.title`, etc.).

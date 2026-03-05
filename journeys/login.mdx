@@ -55,13 +55,17 @@ The mobile app calls `supabase.auth.signInWithPassword()` directly via the `Auth
 |----------------|---------|
 | `user` | Current Supabase user object |
 | `session` | Current session with tokens |
+| `profile` | Current user's profile from `profiles` table |
 | `isAuthenticated` | Boolean |
 | `isLoading` | Auth state loading |
 | `signIn(email, password)` | Email/password login |
-| `signUp(email, password, metadata)` | Registration (also enrolls in Loops.so) |
+| `signUp(data: RegisterFormValues)` | Registration (also enrolls in Loops.so) |
 | `signOut()` | Logout + cache clear |
+| `refreshProfile()` | Re-fetch profile from database |
+| `refreshSession()` | Force session refresh (e.g., after email change) |
+| `deleteAccount()` | Calls `delete_user_account` RPC + signs out |
+| `resetPassword(email)` | Sends password reset email via Supabase |
 | `handleUnauthorized()` | Called by `useApiErrorHandler` on 401 → auto-logout |
-| `updateSession()` | Force session refresh |
 
 ### Supabase Client Configuration
 

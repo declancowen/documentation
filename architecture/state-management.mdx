@@ -5,40 +5,54 @@ description: "How state is managed across the Recipe Room application."
 
 ## State Strategy
 
-| State Type | Solution | Location |
-|------------|----------|----------|
-| Auth | AuthContext | `context/AuthContext.tsx` |
-| Auth Overlay | AuthOverlayContext | `context/AuthOverlayContext.tsx` |
-| Content Overlay | ContentOverlayContext | `context/ContentOverlayContext.tsx` |
-| Dock Layout | DockLayoutContext | `context/DockLayoutContext.tsx` |
-| UI Modals | ModalContext | `context/ModalContext.tsx` |
-| Save Operations | SaveContext | `context/SaveContext.tsx` |
-| Search | SearchContext | `context/SearchContext.tsx` |
-| Theme | ThemeContext | `context/ThemeContext.tsx` |
-| Notifications | ToastContext | `context/ToastContext.tsx` |
-| Server Data | React Query | `hooks/api/*` |
-| Form State | React Hook Form | Component-level |
-| Local State | useState/useReducer | Component-level |
+| State Type | Solution | Location | Platform |
+|------------|----------|----------|----------|
+| Auth | AuthProvider | `providers/AuthProvider.tsx` | Both |
+| Auth Overlay | AuthOverlayContext | `context/AuthOverlayContext.tsx` | Mobile |
+| Content Overlay | ContentOverlayContext | `context/ContentOverlayContext.tsx` | Web (Phase 2) |
+| Dock Layout | DockLayoutContext | `context/DockLayoutContext.tsx` | Web (Phase 2) |
+| Save Operations | SaveContext | `context/SaveContext.tsx` | Both |
+| Search | SearchContext | `context/SearchContext.tsx` | Both |
+| Theme | ThemeProvider | `providers/ThemeProvider.tsx` | Mobile |
+| Notifications | ToastProvider | `providers/ToastProvider.tsx` | Mobile |
+| Profile Navigation | ProfileProvider | `context/ProfileContext.tsx` | Mobile |
+| Tab Bar Scroll | TabBarScrollContext | `context/TabBarScrollContext.tsx` | Mobile |
+| UI Modals | ModalContext | `context/ModalContext.tsx` | Web (Phase 2) |
+| Server Data | React Query | `hooks/api/*` | Both |
+| Form State | React Hook Form | Component-level | Both |
+| Local State | useState/useReducer | Component-level | Both |
 
 ## Provider Hierarchy
 
 ### Mobile
 
 ```tsx
-<AuthProvider>
-  <QueryClientProvider>
-    <ProfileProvider>
-      <SaveProvider>
-        <SearchProvider>
-          <TabBarScrollProvider>
-            <App />
-          </TabBarScrollProvider>
-        </SearchProvider>
-      </SaveProvider>
-    </ProfileProvider>
-  </QueryClientProvider>
-</AuthProvider>
+<SafeAreaProvider>
+  <ThemeProvider>
+    <GestureHandlerRootView>
+      <QueryClientProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <ProfileProvider>
+              <SearchProvider>
+                <AuthOverlayProvider>
+                  <SaveProvider>
+                    <Stack Navigator />
+                  </SaveProvider>
+                </AuthOverlayProvider>
+              </SearchProvider>
+            </ProfileProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </GestureHandlerRootView>
+  </ThemeProvider>
+</SafeAreaProvider>
 ```
+
+<Note>
+`TabBarScrollContext` is provided inside `app/(tabs)/_layout.tsx`, not at the root level. It wraps only the tab navigator, not the entire app.
+</Note>
 
 ### Web (Phase 2)
 

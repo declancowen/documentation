@@ -5,7 +5,7 @@ description: "Delete a recipe."
 
 ## DELETE /api/recipes/[id]
 
-Soft-deletes a recipe by setting `is_deleted = true`. Only the recipe owner can delete it.
+Permanently deletes a recipe and all related data (images, tags, tagged users, comments, mentions, favorites, reposts, lightroom settings, saved items, notifications). Only the recipe owner can delete it. Returns image URLs for storage cleanup.
 
 <Warning>The client should show a confirmation modal before calling this endpoint.</Warning>
 

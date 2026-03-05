@@ -51,15 +51,188 @@ Three-mode theme: light, dark, system (follows device).
 | Piece | Purpose |
 |-------|---------|
 | `ThemeProvider` (`src/providers/ThemeProvider.tsx`) | Manages theme state |
-| `useTheme` hook | Returns `colors`, `isDark`, `resolvedTheme` |
+| `useTheme` hook | Returns `colors`, `isDark`, `resolvedTheme`, `themeMode`, `setThemeMode`, `toggleTheme` |
 | Persistence | `AsyncStorage` with key `recipe-room-theme-mode` |
-| `ThemeSelector` | Settings component for user selection |
+| `ThemeSelector` | Settings component for user selection (light/dark/system) |
+
+### Color Palette
 
 Mobile uses its own `LIGHT_COLORS` / `DARK_COLORS` (slate-based palette) rather than the shared package design tokens.
+
+**Light Mode:**
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `background` | `#ffffff` | Screen backgrounds |
+| `foreground` | `#0f172a` | Primary text, icons |
+| `card` | `#ffffff` | Card backgrounds |
+| `primary` | `#1e293b` | Buttons, active states |
+| `primaryForeground` | `#f8fafc` | Text on primary |
+| `secondary` | `#f1f5f9` | Metadata pills, secondary buttons |
+| `muted` | `#f1f5f9` | Input backgrounds, skeleton base |
+| `mutedForeground` | `#64748b` | Placeholder text, inactive icons |
+| `destructive` | `#ef4444` | Delete actions, errors |
+| `border` | `#e2e8f0` | Dividers, card borders |
+| `input` | `#f1f5f9` | Text input backgrounds |
+
+**Dark Mode:**
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `background` | `#0f1115` | Deep space grey screen backgrounds |
+| `foreground` | `#e8eaed` | Primary text, icons |
+| `card` | `#1c2127` | Card backgrounds |
+| `primary` | `#e8eaed` | Buttons, active states (inverted) |
+| `primaryForeground` | `#0f1115` | Text on primary |
+| `secondary` | `#2d3748` | Metadata pills, secondary buttons |
+| `muted` | `#3d4654` | Input backgrounds, skeleton base |
+| `mutedForeground` | `#94a3b8` | Placeholder text, inactive icons |
+| `destructive` | `#7f1d1d` | Delete actions, errors |
+| `border` | `#1c2127` | Matches card bg for seamless cards |
+| `input` | `#1c2127` | Text input backgrounds |
 
 <Warning>
 The shared package (`packages/shared/src/constants/theme.ts`) exports a complete design token system with `lightTheme` / `darkTheme` objects (red primary scale, neutral scale, semantic colors). The mobile `ThemeProvider` uses its own separate color system. This inconsistency is worth reviewing during the audit.
 </Warning>
+
+## Iconography
+
+All icons use `lucide-react-native`. Key icons across the app:
+
+| Icon | Usage |
+|------|-------|
+| `Plus` | Create content (header left button on all main tabs) |
+| `Sparkles` | Discover tab (bottom bar), filled when active |
+| `Search` | Search tab (bottom bar), heavier stroke when active |
+| `Bookmark` | Saved tab (bottom bar, filled when active), save button on cards/detail views |
+| `User` | Profile tab fallback (when no avatar), user-related UI |
+| `Heart` | Like/favorite button (red `#dc2626` when active, filled), Popular tab icon |
+| `MessageCircle` | Comment button and count |
+| `Send` | Share button on detail views |
+| `Film` | Recipe type indicator, film simulation pill |
+| `ImageIcon` | Post type indicator |
+| `LibraryBig` | Collection type indicator, collections tab on profile |
+| `Compass` | Discover sub-tab icon |
+| `Users` | Creator search tab |
+| `Globe` / `Lock` | Public/private collection indicators |
+| `FolderOpen` | Empty collection placeholder |
+| `ChevronLeft` | Back navigation (other user's profile → own profile) |
+| `X` | Close/dismiss (settings header, search clear) |
+| `Mail` / `Lock` / `LogOut` / `Trash2` | Settings account section icons |
+| `AlertCircle` / `Check` | Username availability indicators |
+| `Camera` | Camera model metadata pill |
+
+### Bottom Tab Bar Icons
+
+| Tab | Icon | Active State |
+|-----|------|-------------|
+| Home | Custom PNG (`home_black.png` / `home_white.png`) | Tinted with `foreground` color |
+| Discover | `Sparkles` | Filled |
+| Search | `Search` | `strokeWidth: 3` (vs 2 inactive) |
+| Saved | `Bookmark` | Filled |
+| Profile | User's avatar via `ExpoImage` (28px circle) | Falls back to `User` icon with `strokeWidth: 3` |
+
+Hidden tabs for unauthenticated users: Home (`index`), Saved.
+
+## ContentCard Variants
+
+`ContentCard` supports 5 variants:
+
+| Variant | Layout | Used In |
+|---------|--------|---------|
+| `default` | Full overlay: title, film sim, author avatar+name, like/comment/repost counts | General content display |
+| `profile` | Top gradient: title + film sim. Bottom: type icon + label | Profile grids (not currently used — profile uses `imageOnly`) |
+| `feed` | Top gradient: title + film sim. Bottom-left: author avatar. Bottom-right: like + save buttons | Feed cards (superseded by `FeedPostCard`) |
+| `minimal` | Top gradient: title + film sim. Bottom: type icon + label. No author/save/likes | Minimal display |
+| `imageOnly` | Cover image only. Optional `Film` icon badge top-right for recipes | Discover grid, search results, profile grids |
+
+### TypeBadge
+
+Pill-shaped badge with icon + label on semi-transparent black background (`rgba(0,0,0,0.5)`). Types: recipe (`Film`), post (`ImageIcon`), collection (`Folder`), repost (`Repeat2`). Two sizes: `sm` (10px icon) and `md` (12px icon).
+
+### MetadataPills
+
+Horizontal scrollable row of pill badges on detail views. Pill types:
+- Content type: icon + label (not clickable)
+- Film simulation: `Film` icon + name (clickable → opens search)
+- Camera model: `Camera` icon + name (clickable → opens search)
+- Tags: `#tag` text with border outline (clickable → opens search)
+
+## FeedPostCard
+
+Instagram-style vertical card used in the Following feed:
+
+| Section | Details |
+|---------|---------|
+| Image | Full-width, dynamic height (60%–125% screen width based on aspect ratio). Multi-image posts use `ImageCarousel` with pagination dots. |
+| Author overlay | Top-left: avatar (32px) + username + type icon (`Film`/`ImageIcon`) on gradient background |
+| Double-tap | Triggers like with animated white heart (80px, scale up + fade out) |
+| Action row | `Heart` (with count), `MessageCircle` (with count), `SaveButton` — left-aligned |
+| Linked recipe | Below actions: secondary-colored tag with `Film` icon + recipe title (clickable) |
+| Caption | Username (bold, clickable) + caption text (truncated at 120 chars) |
+| Comments link | "View all N comments" (clickable, opens comment modal) |
+| Timestamp | Relative time ("2 hours ago", "3 days ago", etc.) |
+
+## DetailActionBar
+
+Action bar on recipe/post detail views:
+- Left side: `Heart` (with count, red when liked), `MessageCircle` (with count)
+- Right side: `Send` (share), `SaveButton` (authenticated only)
+- Repost button is intentionally hidden (kept in code for future use)
+- Like redirects to login for unauthenticated users
+
+## SaveButton
+
+Bookmark icon that opens the save modal:
+- Uses `useSyncExternalStore` for efficient re-renders (only re-renders when this specific item's loading state changes)
+- Reads save status from `SaveStatusContext` cache first, falls back to `useSavedItemIds` set (populated from DB on cold start)
+- Shows `ActivityIndicator` while saving
+- Filled bookmark when saved, outline when not
+- Hidden for unauthenticated users on detail views
+
+## FollowButton
+
+Managed at the component level (not via hook optimistic updates). The `FollowButton` component maintains local `isFollowing` state and reverts on error. See [Follows journey](/journeys/follows) for details.
+
+## Skeleton & Loading Patterns
+
+| Component | Used In | Layout |
+|-----------|---------|--------|
+| `Skeleton` | Base building block | Rounded rectangle with `muted` background at 70% opacity |
+| `MasonryGridSkeleton` | Discover, search, profile grids | Two-column grid of 300px-tall grey blocks |
+| `ProfilePageSkeleton` | Profile tab loading | Centered avatar (120px circle), name/username, 3-column stats, bio lines, action button, 3 tab icons, masonry grid |
+| `ContentDetailSkeleton` | Recipe/post/collection detail loading | Header (avatar + name + close), metadata pills, title/description block, action bar icons, optional tabs, two-column masonry |
+| `FeedPostCardSkeleton` | Following feed loading | Full-width image area with author overlay skeleton, action row icons, caption lines, timestamp |
+| `FeedSkeleton` | Following feed initial load | Two `FeedPostCardSkeleton` stacked |
+| `ContentCardSkeleton` | Individual card loading | Single grey block at specified height |
+| `ProfileHeaderSkeleton` | Profile header loading | Cover photo, avatar, name, bio, stats row |
+| `LoadingState` | Generic full-screen loading | Centered `ActivityIndicator` |
+| `ButtonSpinner` | Button loading states | Small `ActivityIndicator` (white by default) |
+| `InfiniteScrollLoader` | Pagination loading | Centered small `ActivityIndicator` with vertical padding |
+
+## EmptyState Variants
+
+Base `EmptyState` component: icon (in muted circle) + title + description + optional action button.
+
+Pre-configured variants:
+- `NoSearchResults` — `Search` icon, "No results found"
+- `NoSavedItems` — `Bookmark` icon, optional "Browse recipes" action
+- `NoFollowers` — `Users` icon
+- `NoFollowing` — `Users` icon, optional "Discover creators" action
+- `NoRecipes` — `Camera` icon, optional "Create recipe" action
+- `NoPosts` — `ImageIcon` icon, optional "Create post" action
+- `NoCollections` — `Folder` icon, optional "Create collection" action
+
+## ErrorState Variants
+
+Base `ErrorState` component: icon (in destructive-tinted circle) + title + message + optional retry button.
+
+| Type | Icon | Title |
+|------|------|-------|
+| `generic` | `AlertCircle` | "Something went wrong" |
+| `network` | `WifiOff` | "No connection" |
+| `notFound` | `FileQuestion` | "Not found" |
+| `server` | `ServerCrash` | "Server error" |
 
 ## Toast System
 
@@ -202,7 +375,7 @@ onSettled:
 | Save/unsave | Narrow invalidation: specific item status + saved items list | Save state is per-item, doesn't affect grid layout |
 | Collection membership | Narrow invalidation: item status + collection detail | Only affects the specific collection view |
 | Repost | `invalidateQueries({ queryKey: queryKeys.recipes.all })` | Less latency-sensitive than heart animation |
-| Follow/unfollow | Invalidate `users.profile` + `users.followers` | Profile data needs fresh counts |
+| Follow/unfollow | Invalidate `users.profile`, `users.followers`, `users.following`, all `['profile', 'data']` queries | Profile data needs fresh counts; no optimistic update |
 | Create/delete content | Invalidate `recipes.all`, `collections.all`, `saved.all` | New content needs to appear in feeds |
 
 ### Which Caches Get Updated Per Action
@@ -212,6 +385,7 @@ onSettled:
 | Favorite recipe | ✅ `isFavorited`, `favoriteCount` | ✅ all pages | — | ✅ all pages | — | — |
 | Favorite post | ✅ `isFavorited`, `favoriteCount` | — | ✅ all pages | — | — | — |
 | Add comment | ✅ `commentCount` | ✅ `comment_count` all pages | ✅ `comment_count` all pages | — | — | — |
+| Delete comment | ✅ `commentCount` -1 | ✅ `comment_count` -1 all pages | ✅ `comment_count` -1 all pages | — | — | — |
 | Save item | — | — | — | — | ✅ toggle | — |
 | Follow user | — | — | — | — | — | ✅ counts |
 
@@ -225,18 +399,46 @@ The mobile app calls Supabase directly via `supabase.rpc()` and `supabase.from()
 |------------|--------------|
 | `useDiscoverContent` | `supabase.rpc('get_discover_content_list')` |
 | `usePosts` (following) | `supabase.rpc('get_follow_content_list')` |
+| `usePostImages(id)` | `supabase.from('post_images').select(...)` (lazy-load on carousel swipe) |
 | `useRecipe(id)` | `supabase.rpc('get_recipe_detail')` |
 | `usePost(id)` | `supabase.rpc('get_post_detail')` |
 | `useCreateRecipe` | `supabase.rpc('create_recipe')` |
+| `useUpdateRecipe(id)` | `supabase.rpc('update_recipe')` |
+| `useDeleteRecipe` | `supabase.rpc('delete_recipe')` + `supabase.storage.from('recipe-images').remove()` |
 | `useCreatePost` | `supabase.rpc('create_post')` |
+| `useUpdatePost(id)` | `supabase.rpc('update_post')` |
+| `useDeletePost` | `supabase.rpc('delete_post')` |
 | `useToggleFavorite` | `supabase.from('recipe_favorites').insert/delete` |
 | `useTogglePostLike` | `supabase.from('post_favorites').insert/delete` |
 | `useToggleRepost` | `supabase.from('recipe_reposts').insert/delete` |
 | `useToggleStandalone` | `supabase.from('saved_items').insert/delete` |
+| `useToggleCollectionMembership` | `supabase.from('collection_saved_items').insert/delete` |
 | `useAddComment` | `supabase.rpc('create_recipe_comment')` / `supabase.rpc('create_post_comment')` |
+| `useDeleteComment` | `supabase.rpc('delete_recipe_comment')` / `supabase.rpc('delete_post_comment')` |
+| `useComments` | `supabase.rpc('get_comments')` |
 | `useFollowUser` | `supabase.from('follows').insert` |
+| `useUnfollowUser` | `supabase.from('follows').delete` |
+| `useToggleFollow` | `supabase.from('follows').insert/delete` (convenience wrapper) |
+| `useFollowers(userId)` | `supabase.rpc('get_user_followers')` |
+| `useFollowing(userId)` | `supabase.rpc('get_user_following')` |
 | `useSaveStatus` | `supabase.from('saved_items').select` + `supabase.from('collection_saved_items').select` |
 | `useSavedItemIds` | `supabase.from('saved_items').select` → returns `Set<string>` for O(1) lookup |
+| `useSavedItems` | `supabase.from('saved_items').select` + batch fetch recipes/posts |
+| `useSavedPageData` | `supabase.rpc('get_saved_page_data')` |
+| `useUncategorizedSavedItems` | `supabase.rpc('get_uncategorized_saved_items')` |
+| `useCollections` | `supabase.from('collections').select(...)` (direct query, not RPC) |
+| `useCollection(id)` | `supabase.rpc('get_collection_detail')` |
+| `useCreateCollection` | `supabase.from('collections').insert(...)` |
+| `useUpdateCollection` | `supabase.from('collections').update(...)` |
+| `useDeleteCollection` | `supabase.from('collections').delete(...)` (hard delete) |
+| `useUserCollections` | `supabase.from('collections').select(...)` (for ContentSelector) |
+| `useToggleSaveToCollection` | `supabase.from('collection_saved_items').insert/delete` (in useCollections.ts) |
+| `useProfileData(username)` | `supabase.rpc('get_user_profile_data')` |
+| `useProfileDataById(userId)` | `supabase.rpc('get_user_profile_data_by_id')` |
+| `useProfileCollections` | `supabase.rpc('get_user_profile_collections')` |
+| `useUserProfile(userId)` | `supabase.from('profiles').select` + `supabase.from('follows').select` |
+| `useTabAvatar(userId)` | `supabase.from('profiles').select('avatar_url')` |
+| `useSearchUsers(query)` | `supabase.from('profiles').select(...)` with `.or()` filter |
 
 ## Denormalized Counter Table
 

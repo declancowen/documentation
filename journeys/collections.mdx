@@ -36,8 +36,26 @@ Owner taps edit → `app/collection/[id]/edit.tsx` → pre-populated form → ca
 ## Data Access Pattern
 
 <Note>
-The mobile app calls Supabase directly — `supabase.rpc('get_collection_detail')`, `supabase.rpc('get_collections_list')`, etc. The web API routes exist for the web client (Phase 2).
+The mobile app calls Supabase directly. `useCollection(id)` uses `supabase.rpc('get_collection_detail')`, but `useCollections` does a direct table query: `supabase.from('collections').select(...)` with a JOIN to profiles — it does NOT use an RPC. Create, update, and delete also use direct table operations, not RPCs.
 </Note>
+
+### Mobile (Direct Supabase)
+
+| Hook | Supabase Call | Purpose |
+|------|--------------|---------|
+| `useCollections(filters)` | `supabase.from('collections').select(...)` | List collections (direct query, not RPC) |
+| `useCollection(id)` | `supabase.rpc('get_collection_detail')` | Collection detail with paginated items |
+| `useCreateCollection` | `supabase.from('collections').insert(...)` | Create collection |
+| `useUpdateCollection` | `supabase.from('collections').update(...)` | Update (with ownership check) |
+| `useDeleteCollection` | `supabase.from('collections').delete(...)` | Hard delete (CASCADE handles cleanup) |
+| `useSavedPageData` | `supabase.rpc('get_saved_page_data')` | Saved tab overview data |
+| `useUserCollections` | `supabase.from('collections').select(...)` | User's collections for ContentSelector |
+| `useUncategorizedSavedItems` | `supabase.rpc('get_uncategorized_saved_items')` | Items not in any collection |
+| `useToggleSaveToCollection` | `supabase.from('collection_saved_items').insert/delete` | Toggle collection membership |
+
+<Warning>
+`useDeleteCollection` performs a HARD delete (`supabase.from('collections').delete()`), not a soft delete. The CASCADE constraint on `collection_saved_items` handles cleanup automatically.
+</Warning>
 
 ## Web API Routes (Phase 2)
 
@@ -62,7 +80,7 @@ The mobile app calls Supabase directly — `supabase.rpc('get_collection_detail'
 
 | Table | Key Columns | Notes |
 |-------|------------|-------|
-| `collections` | `id`, `user_id` (FK→profiles), `name`, `description`, `cover_recipe_id` (text, nullable — loose reference, no FK), `is_public` (default false), `is_deleted` (default false), `item_count` (denormalized, default 0) | `is_public` controls visibility |
+| `collections` | `id`, `user_id` (FK→profiles), `name`, `description`, `cover_recipe_id` (text, nullable — loose reference, no FK), `is_public` (default false), `is_deleted` (default false), `item_count` (denormalized, default 0) | `is_public` controls visibility. `is_deleted` exists for RLS filtering but mobile `useDeleteCollection` does a hard delete. |
 | `collection_saved_items` | `collection_id` (FK→collections), `saved_item_id` (FK→saved_items), `added_at` | Composite PK. Junction table. |
 
 <Note>
