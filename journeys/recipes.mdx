@@ -29,7 +29,7 @@ Recipes are the atomic unit of Recipe Room — a complete set of Fujifilm camera
     Tags (`TagInput` with suggestions), tagged users (`UserTagSelector`), optional collection assignment (`ContentSelector`).
   </Step>
   <Step title="Submit">
-    Images uploaded first → then `POST /api/recipes` with all data.
+    Images uploaded to Supabase Storage first → then `supabase.rpc('create_recipe', {...})` with all data (atomic transaction).
   </Step>
 </Steps>
 
@@ -45,7 +45,7 @@ Tap recipe card anywhere → `app/recipe/[id].tsx` → `RecipeDetailView` render
 
 ## User Flow — Edit
 
-Owner taps edit → `app/recipe/[id]/edit.tsx` → pre-populated form (fetched via `useRecipe(id)`) → can modify all fields including images → `PUT /api/recipes/[id]` (calls `update_recipe` RPC). Uses `KeyboardAvoidingView` with platform-specific behavior.
+Owner taps edit → `app/recipe/[id]/edit.tsx` → pre-populated form (fetched via `useRecipe(id)`) → can modify all fields including images → `supabase.rpc('update_recipe', {...})`. Uses `KeyboardAvoidingView` with platform-specific behavior.
 
 ## Screens & Components
 

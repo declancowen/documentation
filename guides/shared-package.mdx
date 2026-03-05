@@ -1,11 +1,11 @@
 ---
 title: Shared Package
-description: "The @recipe-room/shared package provides types, validation, constants, and utilities shared between web and mobile apps."
+description: "The @recipe-room/shared package provides types, validation, constants, and utilities shared between the mobile and web apps."
 ---
 
 ## Overview
 
-`packages/shared` is a pnpm workspace package consumed by both `apps/web` and `apps/mobile`. It ensures type safety and consistency across platforms.
+`packages/shared` is a pnpm workspace package consumed by `apps/mobile` and `apps/web`. The web interim app (`apps/web-interim`) does not depend on it — it's a lightweight standalone app with no shared package imports. When Phase 2 begins and the full web client is built out, both `apps/mobile` and `apps/web` will share types, validation, and constants through this package.
 
 ```
 packages/shared/src/

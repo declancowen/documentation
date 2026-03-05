@@ -9,7 +9,7 @@ Collections are user-curated folders for organizing saved recipes and posts. The
 
 ## User Flow — Create
 
-Navigate to `app/collection/new.tsx` → fill in name, description, public/private toggle (via `ToggleSwitch`) → `POST /api/collections`.
+Navigate to `app/collection/new.tsx` → fill in name, description, public/private toggle (via `ToggleSwitch`) → `supabase.from('collections').insert({...})`.
 
 ## User Flow — View
 
@@ -17,7 +17,7 @@ Tap collection → `app/collection/[id].tsx` → `CollectionDetailView` renders 
 
 ## User Flow — Edit
 
-Owner taps edit → `app/collection/[id]/edit.tsx` → pre-populated form → can modify name, description, public/private toggle → `PUT /api/collections/[id]`.
+Owner taps edit → `app/collection/[id]/edit.tsx` → pre-populated form → can modify name, description, public/private toggle → `supabase.from('collections').update({...})`.
 
 ## Screens & Components
 

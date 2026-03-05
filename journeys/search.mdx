@@ -14,7 +14,7 @@ Global search across all content types using PostgreSQL's `pg_trgm` extension fo
     Tap Search tab → `app/(tabs)/search.tsx`
   </Step>
   <Step title="Type Query">
-    Debounced search (via `useDebounce`) → `GET /api/search`
+    Debounced search (via `useDebounce`) → `supabase.rpc('global_search', { p_query, p_type_filter, p_limit })`
   </Step>
   <Step title="View Results">
     Results grouped by type (recipes, posts, collections, users). Optional type filter to narrow results.

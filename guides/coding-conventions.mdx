@@ -65,7 +65,11 @@ import { cn } from '@/lib/utils';
 <div className={cn("p-4", isActive && "bg-primary")} />
 ```
 
-## API Route Patterns
+## API Route Patterns (Phase 2 — `apps/web`)
+
+<Warning>
+  These patterns apply to the web client API routes in `apps/web`, which is Phase 2. The mobile app calls Supabase directly — it does not use any web API routes.
+</Warning>
 
 ### Authentication
 
@@ -120,13 +124,12 @@ const { page, limit, offset } = parsePagination({ page: pageParam, limit: limitP
 
 - Soft deletes: `is_deleted` flag on recipes, posts, collections
 - Always filter: `WHERE is_deleted = FALSE`
-- Views: `recipe_with_stats`, `collection_with_stats`, `post_with_stats`, `profile_stats`
-- Denormalized counters maintained by triggers
+- Denormalized counters on `profiles` table (recipe_count, post_count, etc.) maintained by triggers
+- No database views — all complex queries use RPC functions (see [RPC Functions](/guides/rpc-functions))
 
 ## Don'ts
 
 - Use `getServerSideProps` or `getStaticProps` (use App Router)
-- Call Supabase directly from client for mutations
 - Store sensitive data in localStorage
 - Skip confirmation modals for destructive actions
 - Hardcode URLs (use environment variables)

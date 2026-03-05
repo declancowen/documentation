@@ -26,6 +26,7 @@ This is a SEPARATE app from the full web client (`apps/web`). They have separate
 | Route | Component | Purpose |
 |-------|-----------|---------|
 | `/` | `page.tsx` | Landing page with waitlist signup |
+| `/auth/confirm` | Route handler | Server-side OTP verification — handles email confirmation, password recovery, and email change tokens |
 | `/confirmation-success` | `ConfirmationSuccess` | Email verified success |
 | `/reset-password` | `ResetPassword` | Password reset form |
 | `/email-change-pending` | `EmailChangePending` | Waiting for new email confirmation |
@@ -38,12 +39,31 @@ This is a SEPARATE app from the full web client (`apps/web`). They have separate
 | `/.well-known/assetlinks.json` | Route handler | Android Asset Links |
 | `/api/waitlist` | Route handler | Loops.so waitlist signup |
 
+<Note>
+  The app also includes `error.tsx` (global error boundary) and `not-found.tsx` (404 page) at the root layout level.
+</Note>
+
+## Auth Callback Flow
+
+The `/auth/confirm` route handler is the central entry point for all Supabase email link callbacks. When a user clicks a link in a confirmation, recovery, or email change email, the link points to this route with a `token_hash` and `type` parameter.
+
+The route calls `supabase.auth.verifyOtp()` server-side, then redirects based on the OTP type:
+
+| OTP Type | Redirect To | Purpose |
+|----------|-------------|---------|
+| `signup` or `email` | `/confirmation-success` | Email address confirmed after registration |
+| `recovery` | `/reset-password` | Password reset — user enters new password |
+| `email_change` | `/change-email` | Email change confirmed |
+| (any error) | `/auth/auth-error` | Token invalid, expired, or missing |
+
+The `AuthCallbackHandler` component (used on pages like `/confirmation-success`) handles a secondary path: PKCE code exchange via URL query params and hash fragment token parsing for cases where the redirect includes tokens in the URL fragment rather than as query parameters.
+
 ## Components
 
 | Component | Purpose |
 |-----------|---------|
 | `AuthCallbackHandler` | Processes auth tokens from email links (PKCE code exchange + hash fragment handling) |
-| `RecoveryHandler` | Backup handler for recovery hash fragments (possibly redundant) |
+| `RecoveryHandler` | Backup handler for recovery hash fragments (possibly redundant with `/auth/confirm`) |
 | `AppOnlyContent` | Content redirect page — deep link attempt + "app only" fallback with waitlist |
 
 ## Design Language

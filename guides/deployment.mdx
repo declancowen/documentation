@@ -1,48 +1,23 @@
 ---
 title: Deployment
-description: "How Recipe Room is deployed across web and mobile platforms."
+description: "How Recipe Room is deployed across mobile, web interim, and the future web app."
 ---
 
-## Web Deployment (Vercel)
+## Overview
 
-The web app deploys to Vercel automatically on push to the main branch.
+Recipe Room has three deployment targets, each serving a different purpose in the current phased rollout:
 
-### How It Works
+| App | Platform | Status | What It Deploys |
+|-----|----------|--------|-----------------|
+| `apps/mobile` | EAS → App Store | Active — primary product | iOS app via TestFlight / App Store |
+| `apps/web-interim` | Vercel | Active — supports mobile | Auth callbacks, deep links, landing page |
+| `apps/web` | Vercel | Phase 2 — not deployed | Full web client (future) |
 
-```
-Push to main → Vercel Build → Next.js Build → Deploy to Edge
-```
-
-- API routes run as serverless functions on Vercel's edge network
-- Static pages are pre-rendered at build time
-- Images are optimized via `next/image` and Vercel's image CDN
-
-### Environment Variables
-
-Set these in Vercel's project settings (Settings → Environment Variables):
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (safe for client) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-only) |
-| `LOOPS_API_KEY` | No | Loops.so API key for email notifications |
-
-<Warning>
-  `SUPABASE_SERVICE_ROLE_KEY` must never be prefixed with `NEXT_PUBLIC_`. It is only used in API routes (server-side).
-</Warning>
-
-### Build Command
-
-```bash
-pnpm build:web
-```
-
-Vercel auto-detects the monorepo structure and builds from `apps/web/`.
+The mobile app is the production product. The web interim exists to handle things the mobile app can't do on its own — email confirmation callbacks, password reset flows, universal link verification, and a public landing page with waitlist signup. The full web app will be deployed in Phase 2 when the web client is built out.
 
 ## Mobile Deployment (EAS)
 
-The iOS app is built and submitted via Expo Application Services (EAS).
+The iOS app is built and submitted via Expo Application Services (EAS). This is the primary deployment pipeline.
 
 ### Build Profiles
 
@@ -64,6 +39,16 @@ eas build --profile production --platform ios --auto-submit
 eas submit --platform ios --profile production
 ```
 
+Or from the monorepo root using the convenience scripts:
+
+```bash
+pnpm mobile:build          # Build + auto-submit to App Store
+pnpm mobile:build:preview  # Build for TestFlight
+pnpm mobile:build:dev      # Build dev client
+pnpm mobile:submit         # Submit existing build
+pnpm mobile:build:status   # Check build status
+```
+
 ### Mobile Environment Variables
 
 Set in `apps/mobile/.env` locally, and in EAS secrets for CI builds:
@@ -75,64 +60,92 @@ Set in `apps/mobile/.env` locally, and in EAS secrets for CI builds:
 | `EXPO_PUBLIC_LOOPS_API_KEY` | No | Loops.so API key |
 | `EXPO_CONFIG_MODE` | Yes | `development` or `production` |
 
-`EXPO_CONFIG_MODE` controls which app config is used — `development` for Expo Go compatibility, `production` for EAS builds with the production bundle identifier.
+`EXPO_CONFIG_MODE` controls which app config is used — `development` for Expo Go compatibility, `production` for EAS builds with the production bundle identifier. See [Dual Config](/mobile/dual-config) for details.
+
+
+## Web Interim Deployment (Vercel)
+
+`apps/web-interim` deploys to Vercel automatically on push to the main branch. It runs on a separate Vercel project from the future web app.
+
+### What It Serves
+
+- Auth callback pages (email confirmation, password reset, email change)
+- Deep link verification files (`.well-known/apple-app-site-association`, `.well-known/assetlinks.json`)
+- Content redirect pages (`/recipes/[id]`, `/posts/[id]`, `/collections/[id]`) that either deep link into the app or show an "app only" fallback
+- Public landing page with waitlist signup (via Loops.so)
+
+### Environment Variables
+
+Set in Vercel project settings:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key |
+
+That's it — web interim doesn't need the service role key because it doesn't do server-side data mutations. The only API route it has is `/api/waitlist` for Loops.so signups.
+
+### Build Command
+
+```bash
+pnpm build --filter @recipe-room/web-interim
+```
+
+Vercel should be configured to build from `apps/web-interim/` with the root directory set accordingly.
+
+## Web App Deployment (Phase 2)
+
+`apps/web` is scaffolded but not deployed yet. When Phase 2 begins, it will deploy to Vercel as a separate project.
+
+### How It Will Differ from Web Interim
+
+The full web app will route all data mutations through server-side API routes (using the service role key), unlike the mobile app which talks to Supabase directly. This means:
+
+- API routes handle auth, CRUD, and business logic server-side
+- The service role key stays on the server (never exposed to the browser)
+- Middleware handles route protection and auth redirects
+- `next/image` and Vercel's image CDN handle image optimization
+
+### Future Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (safe for client) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (server-only) |
+| `LOOPS_API_KEY` | No | Loops.so API key for email notifications |
+
+<Warning>
+  `SUPABASE_SERVICE_ROLE_KEY` must never be prefixed with `NEXT_PUBLIC_`. It is only used in API routes (server-side).
+</Warning>
+
+### Middleware (Phase 2)
+
+The Next.js middleware (`apps/web/src/middleware.ts`) will handle route protection:
+
+**Protected routes** (redirect to `/login` if unauthenticated): `/me`, `/settings`, `/recipes/new`, `/collections/new`, `/favorites`, any route containing `/edit`.
+
+**Auth routes** (redirect to `/` if already authenticated): `/login`, `/register`.
+
+The middleware uses `supabase.auth.getUser()` to validate the JWT. When redirecting to login, the original path is preserved as a `redirect` query parameter so the user returns to their intended destination after logging in.
 
 ## Loops.so Integration
 
-Recipe Room uses [Loops.so](https://loops.so) for transactional emails and audience management. The integration is optional — if `LOOPS_API_KEY` is not set, all Loops operations are silently skipped.
+Recipe Room uses [Loops.so](https://loops.so) for transactional emails and audience management. The integration is optional — if the API key is not set, all Loops operations are silently skipped.
 
 ### What It Does
 
-| Event | Action |
-|-------|--------|
-| User registers | Creates a contact in Loops audience, sends welcome email |
-| User deletes account | Removes contact from Loops audience |
-
-### How It Works
-
-The Loops client lives in `apps/web/src/lib/loops/client.ts`. It's a server-side singleton that wraps the Loops REST API:
-
-```typescript
-import { registerUserInLoops, sendWelcomeEmail } from '@/lib/loops/client';
-
-// Called during registration
-await registerUserInLoops(email, firstName, lastName, userId);
-await sendWelcomeEmail(email, firstName);
-```
-
-All Loops calls are wrapped in try/catch — failures are logged but never block the primary operation (registration, account deletion, etc.).
+| Event | Action | Where |
+|-------|--------|-------|
+| User registers | Creates contact in Loops, sends welcome email | Mobile: `AuthProvider.signUp()` calls `registerUserInLoops()` directly |
+| User deletes account | Removes contact from Loops | Mobile: `AuthProvider.deleteAccount()` calls `removeUserFromLoops()` directly |
+| Waitlist signup | Adds email to Loops audience | `apps/web-interim` `/api/waitlist` route |
 
 ### Configuring Loops
 
 1. Create an account at [loops.so](https://loops.so)
 2. Create a transactional email template with ID `welcome-email`
 3. Add the `firstName` data variable to the template
-4. Copy your API key to `LOOPS_API_KEY` in your environment
+4. Copy your API key to the appropriate environment variable
 
-## Middleware
-
-The Next.js middleware (`apps/web/src/middleware.ts`) handles route protection and auth redirects:
-
-### Protected Routes
-
-These routes redirect to `/login` if the user is not authenticated:
-
-- `/me`
-- `/settings`
-- `/recipes/new`
-- `/collections/new`
-- `/favorites`
-- Any route containing `/edit`
-
-### Auth Routes
-
-These routes redirect to `/` if the user is already authenticated:
-
-- `/login`
-- `/register`
-
-### How It Works
-
-The middleware uses `supabase.auth.getUser()` to validate the JWT on every request to protected or auth routes. Public routes skip the auth check entirely for performance.
-
-When redirecting to login, the original path is preserved as a `redirect` query parameter so the user returns to their intended destination after logging in.
+All Loops calls are wrapped in try/catch — failures are logged but never block the primary operation.

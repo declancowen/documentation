@@ -59,13 +59,6 @@ This pattern is unconventional (using `global` as an event bus) but works becaus
 
 `AnimatedTabBar` (`src/components/navigation/AnimatedTabBar.tsx`) — custom animated tab bar that hides on scroll down, shows on scroll up (via `tabBarTranslateY` shared value from `TabBarScrollContext`). Uses React Native Reanimated for smooth 60fps animations.
 
-## Creators / Featured Users
-
-`GET /api/creators` — lists featured/active creators with sorting.
-- RPC: `get_creators_list` with `p_limit`, `p_offset`, `p_sort`
-- Displayed via `CreatorCard` component
-- Query key: `queryKeys.creators.list(filters)`
-
 ## Data Access Pattern
 
 <Note>
@@ -79,10 +72,9 @@ The mobile app calls Supabase RPC functions directly — `supabase.rpc('get_disc
 | `get_follow_content_list` | `p_limit` (20), `p_offset` (0), `p_current_user_id` | JSON | Posts + recipes from followed users, interleaved by created_at |
 | `get_discover_content_list` | `p_limit` (20), `p_offset` (0), `p_sort`, `p_current_user_id` | JSON | All content. Trending = favorite count in last 24h. Popular = total favorite count. Recent = created_at. |
 | `get_posts_list` | `p_limit` (20), `p_offset` (0), `p_sort`, `p_current_user_id` | JSON | Posts-only listing |
-| `get_creators_list` | `p_limit`, `p_offset`, `p_sort` | JSON | Featured/active creators |
 
 <Note>
-There is no standalone `get_recipes_list` RPC function. Recipe listing is handled through the discover content list or via direct Supabase queries in the API route (`/api/recipes/list`).
+There is no `get_creators_list` or `get_recipes_list` RPC function in the database. Recipe listing is handled through the discover content list or via direct Supabase queries. Creator/user listing is handled through profile queries.
 </Note>
 
 ## React Query Configuration

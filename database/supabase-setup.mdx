@@ -15,19 +15,13 @@ description: "Setting up the Supabase project for Recipe Room."
     Go to your Supabase dashboard → SQL Editor → New Query.
   </Step>
   <Step title="Run the migration">
-    Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it. This creates all tables, indexes, views, RLS policies, storage buckets, and triggers.
+    Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it. This creates all tables, indexes, RLS policies, storage buckets, and triggers.
   </Step>
   <Step title="Verify tables">
     In Table Editor, confirm you see: `profiles`, `recipes`, `recipe_images`, `recipe_tags`, `posts`, `post_images`, `post_tags`, `collections`, `collection_saved_items`, `saved_items`, `follows`, `recipe_favorites`, `post_favorites`, `post_comments`, `recipe_comments`, `notifications`.
   </Step>
-  <Step title="Verify views">
-    ```sql
-    SELECT * FROM pg_views WHERE schemaname = 'public';
-    ```
-    You should see `recipe_with_stats` and `collection_with_stats`.
-  </Step>
   <Step title="Verify storage buckets">
-    Go to Storage and confirm: `avatars`, `covers`, `recipe-images`, `post-images`.
+    Go to Storage and confirm: `avatars`, `cover-photos`, `recipe-images`, `post-images`.
   </Step>
 </Steps>
 
@@ -38,7 +32,7 @@ Configure each bucket with these settings:
 | Bucket | Public | Max Size | MIME Types |
 |--------|--------|----------|------------|
 | `avatars` | Yes | 5 MB | image/jpeg, image/png, image/webp |
-| `covers` | Yes | 5 MB | image/jpeg, image/png, image/webp |
+| `cover-photos` | Yes | 5 MB | image/jpeg, image/png, image/webp |
 | `recipe-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
 | `post-images` | Yes | 5 MB | image/jpeg, image/png, image/webp |
 
@@ -46,19 +40,26 @@ Storage policies enforce that users can only upload to their own folder (`auth.u
 
 ## Environment Variables
 
-**Web** (`apps/web/.env.local`):
+**Mobile** (`apps/mobile/.env`) — primary development target:
+```env
+EXPO_CONFIG_MODE=development
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
+```
+
+**Web Interim** (`apps/web-interim/.env.local`) — only needed if working on auth callbacks or landing page:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+**Web App** (`apps/web/.env.local`) — Phase 2, not needed for current development:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 LOOPS_API_KEY=your_loops_api_key
-```
-
-**Mobile** (`apps/mobile/.env`):
-```env
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
 ```
 
 <Warning>

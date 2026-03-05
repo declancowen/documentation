@@ -7,7 +7,15 @@ description: "Repost (share) someone else's recipe or post to your profile."
 
 Repost someone else's recipe or post to share it on your profile. Similar to a retweet.
 
+<Warning>
+  Reposts exist in the database (tables, triggers, counters) and the data layer (types, transforms, RPC responses include `repost_count` and `is_reposted`), but the repost button is intentionally hidden in the mobile app UI. The `DetailActionBar` component has the repost action commented out. The infrastructure is ready — it just needs to be wired up when the feature is enabled.
+</Warning>
+
 ## User Flow
+
+<Warning>
+  Not currently active in the mobile app — the repost button is hidden in `DetailActionBar`. The flow below describes the intended behavior when enabled.
+</Warning>
 
 User taps repost icon on detail view or card → optimistic UI update → direct Supabase call (`supabase.from('recipe_reposts').insert/delete` or `supabase.from('post_reposts').insert/delete`).
 

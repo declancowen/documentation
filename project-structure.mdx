@@ -8,59 +8,54 @@ description: "How the Recipe Room monorepo is organized."
 ```
 recipe-room-monorepo/
 ├── apps/
-│   ├── web/              # Next.js 14 web application
-│   ├── web-interim/      # Legacy interim web app (deprecated)
-│   └── mobile/           # React Native (Expo) iOS app
+│   ├── mobile/           # React Native (Expo) iOS app — ACTIVE, primary product
+│   ├── web-interim/      # Interim web app — auth callbacks, deep links, landing page — ACTIVE
+│   └── web/              # Full Next.js web client — PHASE 2, scaffolded but not active
 ├── packages/
-│   └── shared/           # Shared types, validation, constants
+│   └── shared/           # Shared types, Zod validation, constants, API utilities
 ├── supabase/             # Database migrations
-├── docs/                 # Documentation
+├── docs/                 # This documentation (Mintlify)
 ├── pnpm-workspace.yaml   # Workspace config
 └── package.json          # Root scripts
 ```
 
-<Note>
-  `apps/web-interim/` is a legacy app from an earlier migration phase. It is not actively maintained and should not be used for new development.
-</Note>
+<Warning>
+  `apps/web-interim/` and `apps/web/` are completely separate apps with separate `package.json`, `node_modules`, and codebases. The web interim is the live web presence today — it handles auth callbacks, deep link verification (AASA/Asset Links), content redirect pages, and the public landing page with waitlist. The full web client (`apps/web`) is scaffolded with API routes and component library but is not part of the current phase — it will be built out in Phase 2.
+</Warning>
 
-## Web App (`apps/web/`)
+## Web Interim (`apps/web-interim/`) — Active
+
+A lightweight Next.js 14 app that supports the mobile app:
 
 ```
 src/
-├── app/                      # Next.js App Router
-│   ├── (auth)/               # Auth pages (login, register)
-│   ├── (main)/               # Main app pages
-│   │   ├── recipes/          # Recipe browse, create, view, edit
-│   │   ├── collections/      # Collection pages
-│   │   ├── profile/[username] # Public profiles
-│   │   ├── me/               # Current user profile
-│   │   ├── favorites/        # User favorites
-│   │   └── settings/         # Account settings
-│   └── api/                  # API routes (serverless)
-│       ├── auth/             # register, login, logout
-│       ├── users/            # CRUD, follow, followers
-│       ├── recipes/          # CRUD, favorite, featured
-│       ├── posts/            # CRUD, favorite, comments
-│       ├── collections/      # CRUD, items, favorite
-│       ├── saved-items/      # Save/unsave operations
-│       ├── search/           # Global search
-│       ├── notifications/    # Notification management
-│       └── upload/           # Image upload
-│
-├── componentlibrary/         # shadcn/ui components
-├── components/
-│   ├── features/             # Domain components (auth, recipe, user)
-│   ├── forms/                # Form components
-│   └── layout/               # Header, Footer, Container
-│
-├── context/                  # AuthContext, ModalContext, ToastContext
-├── hooks/                    # Custom hooks + api/ hooks
-├── lib/                      # Supabase clients, API client, utils
-├── styles/                   # Global CSS
-└── types/                    # TypeScript definitions
+├── app/
+│   ├── page.tsx                          # Landing page with waitlist
+│   ├── confirmation-success/             # Email verified success
+│   ├── reset-password/                   # Password reset form
+│   ├── email-change-pending/             # Email change waiting
+│   ├── change-email/                     # Email change success
+│   ├── auth/auth-error/                  # Auth link expired/invalid
+│   ├── recipes/[id]/                     # Deep link redirect → app
+│   ├── posts/[id]/                       # Deep link redirect → app
+│   ├── collections/[id]/                 # Deep link redirect → app
+│   ├── .well-known/
+│   │   ├── apple-app-site-association/   # AASA for iOS universal links
+│   │   └── assetlinks.json/              # Android Asset Links
+│   └── api/waitlist/                     # Loops.so waitlist signup
+├── components/                           # AuthCallbackHandler, AppOnlyContent, etc.
+└── lib/                                  # Supabase browser client
 ```
 
-## Mobile App (`apps/mobile/`)
+No dependency on `@recipe-room/shared`. No content CRUD. No API routes for data mutations. See [Web Interim journey](/journeys/web-interim) for full details.
+
+## Web App (`apps/web/`) — Phase 2
+
+Scaffolded Next.js 14 app with App Router, shadcn/ui component library, and full API route scaffolding. Not the current focus — none of it is serving production traffic today. It will become the full web client when Phase 2 begins. The developer is free to refactor or restructure it as needed.
+
+## Mobile App (`apps/mobile/`) — Active, Primary Product
+
+The iOS app is the main product. Connects directly to Supabase for all data operations — no web API layer in between.
 
 ```
 app/                          # expo-router file-based routing

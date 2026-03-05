@@ -44,7 +44,6 @@
               "guides/rpc-functions",
               "guides/triggers",
               "guides/coding-conventions",
-              "guides/testing",
               "guides/deployment"
             ]
           },

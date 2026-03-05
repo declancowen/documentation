@@ -17,7 +17,7 @@ The profile is the hub for a user's content, stats, and social connections. Supp
 
 Own profile → tap edit → `app/settings.tsx`:
 - Edit username (with real-time availability check via `useUsernameCheck`), first name, surname, location, bio, Instagram handle, avatar, cover photo
-- Submit → `PATCH /api/users/me` (calls `update_user_profile` RPC)
+- Submit → `supabase.rpc('update_user_profile', { p_user_id, ... })` directly
 
 ## Password & Email Changes
 
@@ -26,9 +26,9 @@ Own profile → tap edit → `app/settings.tsx`:
 
 ## Account Deletion
 
-- `DELETE /api/users/[id]` → calls `delete_user_account(p_user_id)` RPC
+- Mobile calls `supabase.rpc('delete_user_account', { p_user_id })` directly
 - Cascading deletion of all user content
-- Removes user from Loops.so
+- Removes user from Loops.so (via Loops API call)
 - Clears session and navigates to login
 - Requires `ConfirmDeleteModal` confirmation
 

@@ -17,13 +17,13 @@ New user account creation with email/password authentication, real-time username
     Username, first name, surname, email, password. Client-side Zod validation via `registerSchema` from the shared package. Username availability checked in real-time via `useUsernameCheck` hook (debounced 300ms, calls `check_username_available` RPC).
   </Step>
   <Step title="Submit">
-    `POST /api/auth/register` — creates user via Supabase Admin Auth with `email_confirm: true`. Passes `username`, `first_name`, `surname` in `user_metadata`.
+    `AuthProvider.signUp()` calls `supabase.auth.signUp()` directly — passing email, password, and `user_metadata` (username, first_name, surname). No web API route involved.
   </Step>
   <Step title="Confirmation">
     On success → navigates to `app/register-success.tsx`. User receives confirmation email.
   </Step>
   <Step title="Email Verification">
-    User clicks confirmation link → web interim `AuthCallbackHandler` processes the token → redirects to `/confirmation-success` success page.
+    User clicks confirmation link → web interim `/auth/confirm` route verifies the OTP token server-side → redirects to `/confirmation-success` success page.
   </Step>
 </Steps>
 
@@ -35,17 +35,17 @@ New user account creation with email/password authentication, real-time username
 | Mobile | `app/register-success.tsx` | Success confirmation |
 | Web Interim | `/confirmation-success` | Email verified success page (after clicking confirmation link) |
 
-## API Route
+## How It Works
 
-**`POST /api/auth/register`**
+The mobile `AuthProvider.signUp()` calls `supabase.auth.signUp()` directly — no web API route involved. It passes:
 
-- Validates body with `registerSchema` (Zod)
-- Creates user via `supabase.auth.admin.createUser()` with `email_confirm: true`
-- Passes `username`, `first_name`, `surname` in `user_metadata`
-- On success, enrolls user in Loops.so for welcome email via `POST https://app.loops.so/api/v1/contacts/create`
+- `email` and `password` for authentication
+- `user_metadata` containing `username`, `first_name`, `surname`
+
+On success, the `handle_new_user` trigger fires automatically to create the profile row. The `AuthProvider` also calls `registerUserInLoops()` (non-blocking) to enroll the user in Loops.so for email campaigns.
 
 <Note>
-Registration is one of the few flows where the mobile app DOES call a web API route — it needs the server-side `supabase.auth.admin.createUser()` which requires the service role key (never exposed to the client). The mobile `AuthProvider.signUp()` calls this endpoint.
+The `POST /api/auth/register` route exists in `apps/web` for the Phase 2 web client (which uses `supabase.auth.admin.createUser()` server-side). The mobile app does NOT use this route — it calls `supabase.auth.signUp()` directly via the Supabase client SDK.
 </Note>
 
 ## Database
@@ -82,9 +82,9 @@ Registration is one of the few flows where the mobile app DOES call a web API ro
 
 ## Loops.so Integration
 
-- On successful registration, the API route enrolls the user in Loops.so email marketing
-- `POST https://app.loops.so/api/v1/contacts/create` with email, firstName, source
-- On account deletion, `POST https://app.loops.so/api/v1/contacts/delete` removes them
+- On successful registration, `AuthProvider.signUp()` calls `registerUserInLoops()` (non-blocking, parallel)
+- Sends email, firstName, surname, and userId to Loops.so
+- On account deletion, `removeUserFromLoops()` removes them
 - Mobile app uses `EXPO_PUBLIC_LOOPS_API_KEY` env var
 
 <CardGroup cols={2}>

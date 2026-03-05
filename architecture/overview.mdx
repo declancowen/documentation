@@ -7,18 +7,14 @@ description: "How Recipe Room is structured across frontend, backend, and data l
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    FRONTEND (Vercel)                      │
+│                 MOBILE APP (Expo/React Native)            │
 │  ┌───────────────────────────────────────────────────┐   │
-│  │              React Application                     │   │
-│  │  Pages → Components → Hooks → Context/State       │   │
+│  │  Screens → Components → Hooks → Context/State     │   │
+│  │  supabase.rpc() / supabase.from() (direct calls)  │   │
 │  └───────────────────────────────────────────────────┘   │
-│  ┌───────────────────────────────────────────────────┐   │
-│  │         API Routes (Serverless Functions)           │   │
-│  │  /api/auth  /api/recipes  /api/posts  /api/users   │   │
-│  └───────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-                          │ HTTPS
-                          ▼
+└──────────────────────────┬──────────────────────────────┘
+                           │ Direct HTTPS (anon key + RLS)
+                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │                   BACKEND (Supabase)                      │
 │  ┌──────────┐  ┌──────────────┐  ┌──────────────────┐   │
@@ -28,11 +24,23 @@ description: "How Recipe Room is structured across frontend, backend, and data l
 │  ┌───────────────────────────────────────────────────┐   │
 │  │         Row Level Security (RLS) Policies          │   │
 │  └───────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────┘
-                          │ Webhooks
-                          ▼
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Loops.so (Email Notifications & Campaigns)              │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│              WEB INTERIM (Vercel — apps/web-interim)      │
+│  Auth callbacks, deep link verification, landing page     │
+│  Separate Next.js app — no content CRUD API routes        │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│              WEB CLIENT (Phase 2 — apps/web)              │
+│  Scaffolded Next.js app with API routes + component lib   │
+│  Will become the full web client when Phase 2 begins      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -51,7 +59,9 @@ The codebase follows a strict layered architecture:
 
 <AccordionGroup>
   <Accordion title="API-First Security">
-    All data mutations go through API routes (`/api/*`). The client never calls Supabase directly for writes. The Supabase service key is only used server-side. RLS policies act as the last line of defense.
+    The mobile app calls Supabase directly via `supabase.rpc()`, `supabase.from()`, and `supabase.auth` for all reads, writes, and authentication. There are no web API route dependencies — everything goes through the Supabase client SDK with RLS policies as the primary security layer.
+
+    The web client (Phase 2) will route all data mutations through API routes (`/api/*`) with the Supabase service key used only server-side. RLS policies act as the last line of defense.
   </Accordion>
   <Accordion title="Component Reusability">
     UI components live in `componentlibrary/` (shadcn/ui). Feature components are organized by domain: `auth/`, `recipe/`, `user/`. Check existing components before creating new ones.
@@ -66,25 +76,26 @@ The codebase follows a strict layered architecture:
 
 ## Data Flow
 
-### Create Recipe
+### Create Recipe (Mobile)
 
 ```
-User Action → Form Validation (Zod) → API Route →
-Supabase Insert → Response → React Query Cache Update →
-Toast Notification → Redirect
+User Action → Form Validation (Zod) → Upload Images to Storage →
+supabase.rpc('create_recipe', {...}) → Response →
+React Query Cache Update → Toast Notification → Redirect
 ```
 
 ### Image Upload
 
 ```
-Select Image → Client Resize/Compress → POST /api/upload/image →
-Validate Server-Side → Supabase Storage → Return URL →
+Select Image → Client Resize/Compress →
+supabase.storage.from('bucket').upload() → Return Public URL →
 Update Form State → Display Preview
 ```
 
-### Follow User
+### Follow User (Mobile)
 
 ```
-Click Follow → Optimistic UI Update → API Route →
-Supabase Insert → Confirm/Rollback → Update Follower Count
+Tap Follow → Optimistic UI Update (all caches) →
+supabase.from('follows').insert() → Confirm/Rollback →
+Trigger updates follower_count + following_count
 ```

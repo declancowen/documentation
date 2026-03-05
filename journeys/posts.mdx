@@ -17,7 +17,7 @@ Posts are a lighter content type than recipes — a photo post with images, capt
     Images (via `ImagePickerStep`), title, caption, camera model, film simulation, tags, optional recipe link (via `ContentSelector`), optional collection assignment.
   </Step>
   <Step title="Submit">
-    Images uploaded → `POST /api/posts`
+    Images uploaded to Supabase Storage → `supabase.rpc('create_post', {...})`
   </Step>
 </Steps>
 
@@ -33,7 +33,7 @@ Owner taps edit → `app/post/[id]/edit.tsx` → pre-populated form (fetched via
 Post images are immutable — `postUpdateSchema` explicitly excludes image fields. Only metadata can be updated: title, caption, tags, camera model, film simulation, recipe link, collection.
 </Warning>
 
-Submit → `PUT /api/posts/[id]` (calls `update_post` RPC).
+Submit → `supabase.rpc('update_post', {...})`.
 
 ## Screens & Components
 
@@ -98,7 +98,9 @@ Comment counts also propagate across all list views when a comment is added (see
     **Returns:** `TABLE(id, title, caption, camera_model, film_simulation, cover_image_url, cover_index, created_at, user_id, recipe_id, collection_id)`
   </Accordion>
   <Accordion title="update_post">
-    **Parameters:** `p_post_id`, `p_user_id`, `p_title`, `p_caption`, `p_camera_model`, `p_film_simulation`, `p_tags[]`, `p_recipe_id`, `p_collection_id`, `p_clear_recipe` (bool), `p_clear_collection` (bool)
+    **Parameters:** `p_post_id`, `p_user_id`, `p_title`, `p_caption`, `p_camera_model`, `p_film_simulation`, `p_tags[]`, `p_recipe_id`, `p_collection_id`
+
+    All parameters except `p_post_id` and `p_user_id` are optional (NULL = no change). If `p_tags` is provided, existing tags are replaced. If `p_collection_id` is provided, the post is linked to that collection (creates a `saved_item` if needed, replaces any existing collection link).
 
     **Returns:** `TABLE(id, title, caption, camera_model, film_simulation, recipe_id, collection_id, updated_at)`
   </Accordion>
@@ -114,17 +116,12 @@ Comment counts also propagate across all list views when a comment is added (see
   </Accordion>
 </AccordionGroup>
 
-### `update_post` Clear Flags
+### `update_post` NULL Semantics
 
-The `update_post` RPC has two boolean parameters for explicitly unlinking content:
-
-| Flag | Default | Purpose |
-|------|---------|---------|
-| `p_clear_recipe` | false | When true, sets `recipe_id` to NULL. Passing NULL for `p_recipe_id` alone means "no change." |
-| `p_clear_collection` | false | When true, removes the post from its collection by deleting the `saved_items` row. |
+All optional parameters use NULL to mean "no change." If `p_recipe_id` is NULL, the existing `recipe_id` is preserved. If `p_collection_id` is provided, the post is linked to that collection (existing collection links are replaced). Tags are replaced wholesale when `p_tags` is non-NULL.
 
 <Note>
-This was a bug fix (migration `20260221_fix_update_post_ambiguous_id.sql`) — previously, NULL couldn't distinguish between "no change" and "clear the link."
+Migration `20260221_fix_update_post_ambiguous_id.sql` fixed column ambiguity in the `update_post` function — the RETURNS TABLE column names conflicted with the `posts` table columns in the UPDATE/SELECT statements. The fix uses table-qualified column references (`posts.id`, `posts.title`, etc.).
 </Note>
 
 ## Validation Constraints

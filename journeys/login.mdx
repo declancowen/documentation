@@ -14,7 +14,7 @@ User authentication with email/password, persistent session management via secur
     App opens → if not authenticated, only Discover, Search, and Profile tabs are visible (Home and Saved are hidden).
   </Step>
   <Step title="Login">
-    Taps login → `app/login.tsx` → enters email + password → client-side Zod validation (`loginSchema`) → `POST /api/auth/login`.
+    Taps login → `app/login.tsx` → enters email + password → client-side Zod validation (`loginSchema`) → `supabase.auth.signInWithPassword()` directly.
   </Step>
   <Step title="Session Established">
     On success → `AuthProvider` stores session, app re-renders with all 5 tabs visible.
@@ -27,13 +27,14 @@ User authentication with email/password, persistent session management via secur
 |----------|--------|---------|
 | Mobile | `app/login.tsx` | Login form, "Forgot password?" link |
 | Mobile | `app/forgot-password.tsx` | Password reset request form |
+| Web Interim | `/auth/confirm` | Server-side OTP verification (entry point for all email links) |
 | Web Interim | `/reset-password` | Password reset page (after clicking recovery link) |
 | Web Interim | `/confirmation-success` | Email confirmed success page |
 | Web Interim | `/email-change-pending` | Waiting for new email confirmation |
 | Web Interim | `/change-email` | Email change success page |
 | Web Interim | `/auth/auth-error` | Auth link invalid/expired error page |
 
-## API Route
+## API Route (Phase 2 — Web Client Only)
 
 **`POST /api/auth/login`**
 - Validates body with `loginSchema`
@@ -41,7 +42,7 @@ User authentication with email/password, persistent session management via secur
 - Returns session data (access_token, refresh_token)
 
 <Note>
-On mobile, the `AuthProvider` calls `supabase.auth.signInWithPassword()` directly — it does not go through the web API route. The `/api/auth/login` route exists for the web client (Phase 2).
+The mobile app calls `supabase.auth.signInWithPassword()` directly via the `AuthProvider` — it does NOT go through this web API route. This route exists for the web client (Phase 2).
 </Note>
 
 ## Mobile Auth Architecture
@@ -101,32 +102,41 @@ Intercepts actions that require auth (favorite, save, comment, follow) and shows
 
 The web interim (`apps/web-interim`) handles all Supabase email-based auth flows. This is critical infrastructure.
 
-### Dual Auth Flow (PKCE vs Implicit)
+### Dual Auth Flow (Server-side OTP vs Client-side Token Exchange)
 
-| Flow | When Used | Token Location |
-|------|-----------|---------------|
-| PKCE | Mobile registration | `code` query parameter |
-| Implicit | Password recovery, email change | `#` hash fragment with `access_token`, `refresh_token`, `type` |
+| Flow | Route | When Used |
+|------|-------|-----------|
+| Server-side OTP | `/auth/confirm` (route handler) | Primary path — Supabase email links with `token_hash` + `type` params |
+| Client-side PKCE | `AuthCallbackHandler` (component) | Fallback — `code` query param exchanged for session |
+| Client-side Implicit | `AuthCallbackHandler` (component) | Fallback — `#` hash fragment with `access_token`, `refresh_token`, `type` |
 
 ### Callback Processing
 
-<Steps>
-  <Step title="User clicks email link">
-    Arrives at web interim root or `/auth/callback`
-  </Step>
-  <Step title="AuthCallbackHandler detects flow type">
-    - `code` param → PKCE → exchanges code for session → checks `type` for redirect
-    - Hash with `type=recovery` → redirects to `/reset-password`
-    - Hash with `type=email_change` → redirects to `/change-email`
-    - Hash with `type=signup` → redirects to `/confirmation-success`
-    - Error params → redirects to `/auth/auth-error`
-  </Step>
-</Steps>
+There are two paths for auth callbacks, depending on how Supabase formats the email link:
+
+**Path 1: Server-side OTP verification (`/auth/confirm`)**
+
+The primary path. Supabase email links include `token_hash` and `type` query params. The `/auth/confirm` route handler calls `supabase.auth.verifyOtp()` server-side, then redirects:
+
+| OTP Type | Redirect |
+|----------|----------|
+| `signup` / `email` | `/confirmation-success` |
+| `recovery` | `/reset-password` |
+| `email_change` | `/change-email` |
+| Error | `/auth/auth-error` |
+
+**Path 2: Client-side token exchange (`AuthCallbackHandler`)**
+
+Fallback for PKCE flows or hash-fragment tokens. The `AuthCallbackHandler` component (mounted on destination pages) detects:
+- `code` query param → PKCE code exchange → session established
+- `#` hash fragment with `type=recovery` → redirects to `/reset-password`
+- `#` hash fragment with `type=signup` → redirects to `/confirmation-success`
+- Error params → redirects to `/auth/auth-error`
 
 ### Password Recovery Flow
 
 1. User taps "Forgot password?" on mobile → `app/forgot-password.tsx`
-2. Enters email → `POST /api/auth/forgot-password` → Supabase sends recovery email
+2. Enters email → `supabase.auth.resetPasswordForEmail(email, { redirectTo })` — Supabase sends recovery email directly (no web API route)
 3. User clicks link → web interim detects `type=recovery` → `/reset-password`
 4. Sets new password via `supabase.auth.updateUser({ password })`
 

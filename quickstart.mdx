@@ -22,25 +22,29 @@ description: "Get Recipe Room running locally in a few minutes."
   </Step>
   <Step title="Set up environment variables">
     ```bash
-    cp apps/web/.env.example apps/web/.env.local
     cp apps/mobile/.env.example apps/mobile/.env
     ```
 
-    Fill in your Supabase credentials:
+    **Mobile** (`apps/mobile/.env`):
+    ```env
+    EXPO_CONFIG_MODE=development
+    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
+    ```
 
-    **Web** (`apps/web/.env.local`):
+    **Web Interim** (`apps/web-interim/.env.local`) — only needed if working on auth callbacks or landing page:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+    **Web App** (`apps/web/.env.local`) — Phase 2, not needed for current development:
     ```env
     NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
     SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
     LOOPS_API_KEY=your_loops_api_key
-    ```
-
-    **Mobile** (`apps/mobile/.env`):
-    ```env
-    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-    EXPO_PUBLIC_LOOPS_API_KEY=your_loops_api_key
     ```
   </Step>
   <Step title="Set up the database">
@@ -54,11 +58,14 @@ description: "Get Recipe Room running locally in a few minutes."
   </Step>
   <Step title="Start developing">
     ```bash
-    # Web app
-    pnpm dev:web
-
-    # Mobile app (iOS)
+    # Mobile app (iOS) — primary development target
     pnpm dev:mobile
+
+    # Web interim (auth callbacks, landing page)
+    pnpm dev:web-interim
+
+    # Web app (Phase 2 — not current focus)
+    pnpm dev:web
     ```
   </Step>
 </Steps>
@@ -67,9 +74,11 @@ description: "Get Recipe Room running locally in a few minutes."
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev:web` | Start Next.js dev server |
-| `pnpm dev:mobile` | Start Expo dev server |
-| `pnpm build:web` | Build web app for production |
+| `pnpm dev:mobile` | Start Expo dev server (primary) |
+| `pnpm dev:web-interim` | Start web interim dev server |
+| `pnpm dev:web` | Start Next.js web app dev server (Phase 2) |
+| `pnpm build:web` | Build web app for production (Phase 2) |
+| `pnpm build:web-interim` | Build web interim for production |
 | `pnpm lint` | Lint all packages |
 | `pnpm type-check` | Type check all packages |
 | `pnpm test` | Run tests across all packages |

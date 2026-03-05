@@ -14,20 +14,20 @@ All tables have Row Level Security enabled. RLS acts as the last line of defense
 Most content tables (profiles, recipes, posts, collections) follow this pattern:
 
 ```sql
--- Anyone can read
-CREATE POLICY "Public read" ON recipes
-  FOR SELECT USING (true);
+-- Non-deleted visible to all, owners can see their own deleted
+CREATE POLICY "Published recipes are viewable by everyone" ON recipes
+  FOR SELECT USING ((is_deleted = false) OR (auth.uid() = user_id));
 
 -- Only owner can insert
-CREATE POLICY "Owner insert" ON recipes
+CREATE POLICY "Users can insert own recipes" ON recipes
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Only owner can update
-CREATE POLICY "Owner update" ON recipes
+CREATE POLICY "Users can update own recipes" ON recipes
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- Only owner can delete
-CREATE POLICY "Owner delete" ON recipes
+CREATE POLICY "Users can delete own recipes" ON recipes
   FOR DELETE USING (auth.uid() = user_id);
 ```
 
@@ -59,28 +59,101 @@ Storage buckets use folder-based ownership. Each user uploads to a folder named 
 
 ```sql
 -- Users can upload to their own folder
-CREATE POLICY "User upload" ON storage.objects
+CREATE POLICY "Users can upload their own avatar" ON storage.objects
   FOR INSERT WITH CHECK (
-    bucket_id = 'recipe-images' AND
+    bucket_id = 'avatars' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
 -- Public read access
-CREATE POLICY "Public read" ON storage.objects
-  FOR SELECT USING (bucket_id = 'recipe-images');
+CREATE POLICY "Avatar images are publicly accessible" ON storage.objects
+  FOR SELECT USING (bucket_id = 'avatars');
 ```
+
+All 4 buckets (`avatars`, `recipe-images`, `post-images`, `cover-photos`) follow the same pattern:
+- SELECT: Public (anyone can view images)
+- INSERT: Authenticated, must upload to own `{user_id}/` folder
+- UPDATE: Owner only (folder name matches `auth.uid()`)
+- DELETE: Owner only (folder name matches `auth.uid()`)
+
+<Note>
+The `recipe-images` bucket INSERT policy is slightly different — it checks `auth.role() = 'authenticated'` without the folder ownership check on insert. The other three buckets enforce folder ownership on insert.
+</Note>
+
+## Complete Policy Reference
+
+### Content Tables
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|-------|--------|--------|--------|--------|
+| `profiles` | Public (`true`) | Own (`auth.uid() = id`) | Own | — |
+| `recipes` | Non-deleted OR own | Own (`auth.uid() = user_id`) | Own | Own |
+| `posts` | Non-deleted only | Own | Own | Own |
+| `collections` | Non-deleted OR own | Own | Own | Own |
+
+### Media, Tags & Settings
+
+| Table | SELECT | INSERT/UPDATE/DELETE |
+|-------|--------|---------------------|
+| `recipe_images` | Public | Owner via JOIN to recipes |
+| `recipe_tags` | Public | Owner via JOIN to recipes (separate INSERT/UPDATE/DELETE policies) |
+| `post_images` | Non-deleted parent | Owner via ALL policy (JOIN to posts) |
+| `post_tags` | Non-deleted parent | Owner via ALL policy (JOIN to posts) |
+| `lightroom_settings` | Public | Owner via JOIN to recipes (separate INSERT/UPDATE/DELETE policies) |
+
+### Social
+
+| Table | SELECT | INSERT | DELETE |
+|-------|--------|--------|--------|
+| `follows` | Public | Own (`auth.uid() = follower_id`) | Own |
+| `recipe_favorites` | Public | Own (`auth.uid() = user_id`) | Own |
+| `post_favorites` | Public | ALL own (`auth.uid() = user_id`) | — |
+| `recipe_reposts` | Public | Own | Own |
+| `post_reposts` | Public | Own | Own |
+
+### Comments & Mentions
+
+| Table | SELECT | INSERT | DELETE |
+|-------|--------|--------|--------|
+| `recipe_comments` | Non-deleted parent | Own (`auth.uid() = user_id`) | Own |
+| `post_comments` | Non-deleted parent | Own | Own |
+| `recipe_comment_mentions` | Public | Comment author (via JOIN) | Comment author |
+| `post_comment_mentions` | Public | Comment author (via JOIN) | Comment author |
+
+### Tagged Users
+
+| Table | SELECT | INSERT | DELETE |
+|-------|--------|--------|--------|
+| `recipe_tagged_users` | Public | Content author (via JOIN) | Content author |
+| `post_tagged_users` | Public | Content author (via JOIN) | Content author |
+
+### Saved Items & Collections
+
+| Table | SELECT | INSERT | DELETE |
+|-------|--------|--------|--------|
+| `saved_items` | Own only (`user_id = auth.uid()`) | Own | Own |
+| `collection_saved_items` | Public | Must own both collection AND saved_item | Must own collection |
+
+### Notifications
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|-------|--------|--------|--------|--------|
+| `notifications` | Own (`auth.uid() = recipient_id`) | Own (`auth.uid() = actor_id`) | Own (recipient) | Own (recipient) |
 
 ## Soft Deletes
 
-Recipes and posts use `is_deleted` flags rather than hard deletes. Views automatically filter these:
+Recipes, posts, and collections use `is_deleted` flags rather than hard deletes. RLS policies on `recipes` and `posts` enforce this at the database level:
 
 ```sql
-CREATE VIEW recipe_with_stats AS
-SELECT r.*, ...
-FROM recipes r
-WHERE r.is_deleted = FALSE;
+-- Recipes: non-deleted visible to all, owners can see their own deleted
+CREATE POLICY "Published recipes are viewable by everyone" ON recipes
+  FOR SELECT USING ((is_deleted = false) OR (auth.uid() = user_id));
+
+-- Posts: only non-deleted visible
+CREATE POLICY "Posts are viewable by everyone" ON posts
+  FOR SELECT USING (is_deleted = false);
 ```
 
 <Note>
-  Always filter by `is_deleted = FALSE` in queries. The views handle this automatically, but direct table queries need the filter.
+  There are no database views — all stats are denormalized directly on the parent tables. RPC functions handle joins inline. Always filter by `is_deleted = FALSE` in direct table queries.
 </Note>

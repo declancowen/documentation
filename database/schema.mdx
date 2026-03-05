@@ -38,9 +38,9 @@ Extends Supabase `auth.users` with profile data.
 | `username` | TEXT | Unique, required |
 | `first_name` | TEXT | Required |
 | `surname` | TEXT | Required |
-| `location` | TEXT | Required |
+| `location` | TEXT | Optional, default '' |
 | `instagram_handle` | TEXT | Optional |
-| `bio` | TEXT | Required |
+| `bio` | TEXT | Optional, default '' |
 | `avatar_url` | TEXT | Supabase Storage URL |
 | `cover_photo_url` | TEXT | Supabase Storage URL |
 | `recipe_count` | INTEGER | Denormalized counter (trigger-maintained) |
@@ -118,10 +118,12 @@ User-created groupings of saved content.
 | `user_id` | UUID (FK) | References `profiles(id)` |
 | `name` | TEXT | Required |
 | `description` | TEXT | Optional |
-| `cover_recipe_id` | UUID | Cover image source |
+| `cover_recipe_id` | TEXT | Loose reference (no FK constraint) |
 | `is_public` | BOOLEAN | Visibility toggle |
 | `is_deleted` | BOOLEAN | Soft delete flag |
 | `item_count` | INTEGER | Denormalized counter (trigger-maintained) |
+| `created_at` | TIMESTAMPTZ | Auto |
+| `updated_at` | TIMESTAMPTZ | Auto |
 
 ## Lightroom Settings
 
@@ -256,9 +258,6 @@ Provia, Velvia, Astia, Classic Chrome, Pro Neg Hi, Pro Neg Std, Classic Neg, Ete
 
 ## Views
 
-| View | Purpose |
-|------|---------|
-| `recipe_with_stats` | Recipes joined with author info (`author_username`, `author_avatar`, `author_first_name`, `author_surname`) and `favorite_count`, `comment_count`, `repost_count` |
-| `collection_with_stats` | Collections with author info, `favorite_count`, `item_count`, `repost_count`, `is_public` |
-| `post_with_stats` | Posts with author info, `favorite_count`, `comment_count`, `repost_count` |
-| `profile_stats` | Profiles with `follower_count`, `following_count`, `recipe_count`, `collection_count`, `post_count`, `total_recipe_likes`, `total_collection_likes`, `total_post_likes` |
+<Warning>
+There are NO database views in the live database. The project rules reference `recipe_with_stats` and `collection_with_stats` views — these do not exist. All stats (favorite_count, comment_count, repost_count) are denormalized directly on the parent tables (`recipes`, `posts`, `collections`). Author info is joined inline by the RPC functions (`get_recipe_detail`, `get_post_detail`, etc.).
+</Warning>

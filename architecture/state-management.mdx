@@ -22,6 +22,26 @@ description: "How state is managed across the Recipe Room application."
 
 ## Provider Hierarchy
 
+### Mobile
+
+```tsx
+<AuthProvider>
+  <QueryClientProvider>
+    <ProfileProvider>
+      <SaveProvider>
+        <SearchProvider>
+          <TabBarScrollProvider>
+            <App />
+          </TabBarScrollProvider>
+        </SearchProvider>
+      </SaveProvider>
+    </ProfileProvider>
+  </QueryClientProvider>
+</AuthProvider>
+```
+
+### Web (Phase 2)
+
 ```tsx
 <AuthProvider>
   <ModalProvider>
@@ -34,7 +54,7 @@ description: "How state is managed across the Recipe Room application."
 
 ## Server State with React Query
 
-All API data is fetched and cached via React Query hooks in `hooks/api/`:
+All server data is fetched and cached via React Query hooks in `hooks/api/`. On mobile, these hooks call Supabase directly (RPC functions and table queries). On web (Phase 2), they'll call API routes.
 
 ```tsx
 import { useRecipes } from '@/hooks/api';
@@ -51,11 +71,14 @@ Available hooks:
 |------|---------|
 | `useRecipes` | List/filter recipes |
 | `useRecipe` | Single recipe detail |
-| `useUser` | User profile data |
+| `useProfileData` | User profile data (calls `get_user_profile_data` RPC) |
 | `useFollow` | Follow/unfollow mutations |
 | `useFavorite` | Favorite/unfavorite mutations |
 | `useCollections` | List/filter collections |
 | `useCollection` | Single collection detail |
+| `useSaveStatus` | Save/bookmark status for content |
+| `useComments` | Comment CRUD |
+| `useNotifications` | Notification fetching |
 
 ## Form State
 
@@ -71,19 +94,30 @@ const form = useForm<RecipeFormValues>({
 });
 ```
 
-## Optimistic Updates
+## Optimistic Updates & Cross-Screen Cache Sync
 
-Mutations use optimistic updates for instant UI feedback:
+Mutations use optimistic updates for instant UI feedback. The pattern is consistent across all engagement hooks:
+
+1. `onMutate` — Snapshot current cache, optimistically update the UI
+2. `mutationFn` — Perform the actual Supabase operation (insert/delete)
+3. `onError` — Rollback to the snapshot if the operation fails
+4. `onSettled` — Narrow cache invalidation (only the affected queries, not everything)
 
 ```tsx
-const { mutate } = useFavorite();
-
-const handleFavorite = () => {
-  mutate(
-    { recipeId, isFavorited: !isFavorited },
-    { optimisticData: { ...recipe, isFavorited: !isFavorited } }
-  );
-};
+// Example: useFavorite hook pattern
+onMutate: async ({ contentId }) => {
+  await queryClient.cancelQueries({ queryKey: ['favorites', contentId] });
+  const previous = queryClient.getQueryData(['favorites', contentId]);
+  queryClient.setQueryData(['favorites', contentId], (old) => ({
+    ...old,
+    isFavorited: !old.isFavorited,
+    favoriteCount: old.isFavorited ? old.favoriteCount - 1 : old.favoriteCount + 1,
+  }));
+  return { previous };
+},
+onError: (err, vars, context) => {
+  queryClient.setQueryData(['favorites', vars.contentId], context.previous);
+},
 ```
 
-If the server request fails, the UI automatically rolls back.
+This pattern is used by `useFavorite`, `useFollow`, `useToggleStandalone` (save/unsave), `useToggleCollectionMembership`, and `useRepost`.

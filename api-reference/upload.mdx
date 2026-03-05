@@ -5,6 +5,10 @@ description: "Upload images to Supabase Storage."
 
 ## POST /api/upload/image
 
+<Warning>
+This API route is for the Phase 2 web client. The mobile app uploads images directly to Supabase Storage via the `useImageUpload` hook — see [Image Upload journey](/journeys/image-upload).
+</Warning>
+
 Uploads an image to the appropriate Supabase Storage bucket.
 
 <Note>Requires authentication.</Note>
@@ -36,7 +40,7 @@ Uploads an image to the appropriate Supabase Storage bucket.
 | Type | Bucket | Folder Structure |
 |------|--------|-----------------|
 | `avatar` | `avatars` | `{user_id}/avatar.jpg` |
-| `cover` | `covers` | `{user_id}/cover.jpg` |
+| `cover` | `cover-photos` | `{user_id}/cover.jpg` |
 | `recipe` | `recipe-images` | `{user_id}/{image_id}.jpg` |
 | `post` | `post-images` | `{user_id}/{image_id}.jpg` |
 

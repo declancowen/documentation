@@ -14,17 +14,21 @@ Handles the full image pipeline: client-side resize/compress, upload to Supabase
     User picks images via `ImagePickerStep` component (uses expo-image-picker, full-screen with album selection).
   </Step>
   <Step title="Client-Side Processing">
-    Resize/compress via `imageOptimization.ts` utilities.
+    All images are converted to JPEG via `expo-image-manipulator` (handles HEIC/HEIF from iOS). Compressed at 0.8 quality. iOS `ph://` URIs resolved to `file://` via `MediaLibrary.getAssetInfoAsync()`.
   </Step>
-  <Step title="Upload">
-    `POST /api/upload/image` → validates type, MIME, size → uploads to Supabase Storage bucket.
+  <Step title="Upload to Supabase Storage">
+    `useImageUpload` hook reads the file as base64 via `expo-file-system`, converts to `Uint8Array`, uploads directly to Supabase Storage: `supabase.storage.from(bucket).upload(path, uint8Array, { contentType: 'image/jpeg' })`.
   </Step>
   <Step title="URL Returned">
-    Returns public URL for use in recipe/post/profile.
+    Returns public URL with cache-busting timestamp (`?t={timestamp}`) for use in recipe/post/profile forms.
   </Step>
 </Steps>
 
-## API Route
+<Note>
+The mobile app uploads images directly to Supabase Storage — it does NOT go through the `POST /api/upload/image` web API route. The web API route exists for the web client (Phase 2). File size validation (max 5MB via `MAX_IMAGE_SIZE_BYTES` from shared package) happens client-side before upload.
+</Note>
+
+## Web API Route (Phase 2)
 
 **`POST /api/upload/image`**
 - Validates `type` parameter: `avatar`, `recipe`, `post`, `coverPhoto`

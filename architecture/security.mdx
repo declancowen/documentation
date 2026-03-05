@@ -5,23 +5,43 @@ description: "Authentication, authorization, and security patterns in Recipe Roo
 
 ## Authentication Flow
 
+The authentication flow differs between mobile and web:
+
+### Mobile (Current)
+
+```
+1. User submits credentials
+2. supabase.auth.signInWithPassword() verifies credentials directly
+3. JWT token returned to client
+4. Token stored in SecureStore (expo-secure-store)
+5. Supabase JS client attaches token to all subsequent requests
+6. RLS policies enforce access control at the database level
+```
+
+### Web (Phase 2)
+
 ```
 1. User submits credentials
 2. API route validates input with Zod
-3. Supabase Auth verifies credentials
-4. JWT token returned to client
-5. Token stored in httpOnly cookie (web) / SecureStore (mobile)
-6. Subsequent requests include token
-7. API routes verify token before processing
+3. Supabase Auth verifies credentials server-side
+4. JWT token stored in httpOnly cookie
+5. Subsequent requests include cookie
+6. API routes verify token via requireAuth() before processing
 ```
 
 ## Authorization Layers
 
-Recipe Room uses three layers of authorization:
+Recipe Room uses different authorization strategies per platform:
 
 <Steps>
-  <Step title="API Route Level">
-    Every protected API route uses the `requireAuth` utility to verify the JWT and extract the user:
+  <Step title="Supabase RLS (Both Platforms)">
+    Row Level Security is the primary authorization layer. Every table has RLS policies that enforce access control at the database level. This is the security backbone — even if application code has a bug, RLS prevents unauthorized data access.
+  </Step>
+  <Step title="Storage Policies (Both Platforms)">
+    Supabase Storage policies restrict file uploads based on ownership. Users can only upload to their own folder path (matched against `auth.uid()`).
+  </Step>
+  <Step title="API Route Auth (Web Only — Phase 2)">
+    Web API routes use the `requireAuth` utility to verify the JWT and extract the user before processing:
 
     ```tsx
     import { requireAuth } from '@/lib/utils/auth';
@@ -33,40 +53,36 @@ Recipe Room uses three layers of authorization:
     const { user } = authResult;
     ```
   </Step>
-  <Step title="Supabase RLS">
-    Row Level Security policies enforce database-level access control. Even if an API route has a bug, RLS prevents unauthorized data access.
-  </Step>
-  <Step title="Storage Policies">
-    Supabase Storage policies restrict file access based on ownership. Users can only upload to their own folder.
-  </Step>
 </Steps>
 
-## API-First Security
+## Mobile vs Web Security Model
 
-<Warning>
-  All data mutations MUST go through API routes (`/api/*`). Never call Supabase directly from the client for writes.
-</Warning>
+<Note>
+  The mobile app calls Supabase directly for all reads, writes, and authentication — via RPC functions, table queries, and `supabase.auth` methods. There are no web API route dependencies. RLS policies are the primary security boundary.
+</Note>
 
-- Use `lib/supabase/client.ts` for browser-side reads
-- Use `lib/supabase/server.ts` for API routes (has service role access)
-- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client
+The web app (Phase 2) will route mutations through API routes (`/api/*`) for an additional server-side validation layer. But for mobile, Supabase RLS + client-side Zod validation is the security model.
+
+- Mobile: `supabase` client from `src/lib/supabase.ts` (anon key, user JWT via SecureStore)
+- Web: `lib/supabase/client.ts` for browser reads, `lib/supabase/server.ts` for API routes (service role)
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to any client
 
 ## Input Validation
 
-All inputs are validated server-side using Zod schemas from the shared package:
+Inputs are validated client-side using Zod schemas from the shared package. On web (Phase 2), the same schemas validate server-side in API routes:
 
 ```tsx
 import { recipeSchema } from '@recipe-room/shared';
 
 const result = recipeSchema.safeParse(body);
 if (!result.success) {
-  return validationError('Invalid data', result.error.flatten().fieldErrors);
+  // Show validation errors in the form UI
 }
 ```
 
-## Error Responses
+## Error Responses (Web API — Phase 2)
 
-Standardized error format across all API routes:
+Standardized error format across all web API routes:
 
 ```json
 {

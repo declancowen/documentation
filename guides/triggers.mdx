@@ -9,34 +9,44 @@ Recipe Room uses PostgreSQL triggers to maintain denormalized counters and creat
 
 ## Counter Triggers
 
-All counter triggers fire on INSERT and DELETE to keep denormalized counts in sync.
+Counter triggers maintain denormalized counts in sync. Most fire on INSERT and DELETE; profile counters also fire on UPDATE to handle soft deletes.
 
 ### Profile Counters
 
-| Trigger | Table | Updates |
-|---------|-------|---------|
-| `update_follow_counts` | `follows` | `profiles.follower_count`, `profiles.following_count` |
-| `update_profile_recipe_count` | `recipes` | `profiles.recipe_count` |
-| `update_profile_post_count` | `posts` | `profiles.post_count` |
-| `update_profile_collection_count` | `collections` | `profiles.collection_count` |
+| Trigger | Table | Events | Updates |
+|---------|-------|--------|---------|
+| `trigger_update_follow_counts` | `follows` | INSERT, DELETE | `profiles.follower_count`, `profiles.following_count` |
+| `trigger_update_profile_recipe_count` | `recipes` | INSERT, UPDATE, DELETE | `profiles.recipe_count` |
+| `trigger_update_profile_post_count` | `posts` | INSERT, UPDATE, DELETE | `profiles.post_count` |
+| `trigger_update_profile_collection_count` | `collections` | INSERT, UPDATE, DELETE | `profiles.collection_count` |
+
+<Note>
+Recipe, post, and collection count triggers fire on UPDATE as well as INSERT/DELETE because soft deletes (`is_deleted = true`) are implemented as UPDATEs. The trigger functions check the `is_deleted` flag to correctly adjust counts.
+</Note>
 
 ### Content Counters
 
 | Trigger | Table | Updates |
 |---------|-------|---------|
-| `update_recipe_favorite_count` | `recipe_favorites` | `recipes.favorite_count` |
-| `update_recipe_comment_count` | `recipe_comments` | `recipes.comment_count` |
-| `update_recipe_repost_count` | `recipe_reposts` | `recipes.repost_count` |
-| `update_post_favorite_count` | `post_favorites` | `posts.favorite_count` |
-| `update_post_comment_count` | `post_comments` | `posts.comment_count` |
-| `update_post_repost_count` | `post_reposts` | `posts.repost_count` |
-| `update_collection_item_count` | `collection_saved_items` | `collections.item_count` |
+| `trigger_update_recipe_favorite_count` | `recipe_favorites` | `recipes.favorite_count` |
+| `trigger_update_recipe_comment_count` | `recipe_comments` | `recipes.comment_count` |
+| `trigger_update_recipe_repost_count` | `recipe_reposts` | `recipes.repost_count` |
+| `trigger_update_post_favorite_count` | `post_favorites` | `posts.favorite_count` |
+| `trigger_update_post_comment_count` | `post_comments` | `posts.comment_count` |
+| `trigger_update_post_repost_count` | `post_reposts` | `posts.repost_count` |
+| `trigger_update_collection_item_count` | `collection_saved_items` | `collections.item_count` |
 
-### Timestamp Trigger
+### Timestamp Triggers
 
-| Trigger | Tables | Updates |
-|---------|--------|---------|
-| `update_updated_at_column` | `profiles`, `recipes`, `posts`, `collections`, `lightroom_settings` | `updated_at` |
+Each table has its own named trigger, all calling the same `update_updated_at_column()` function:
+
+| Trigger | Table | Timing | Updates |
+|---------|-------|--------|---------|
+| `update_profiles_updated_at` | `profiles` | BEFORE UPDATE | `updated_at` |
+| `update_recipes_updated_at` | `recipes` | BEFORE UPDATE | `updated_at` |
+| `posts_updated_at` | `posts` | BEFORE UPDATE | `updated_at` |
+| `update_collections_updated_at` | `collections` | BEFORE UPDATE | `updated_at` |
+| `update_lightroom_settings_updated_at` | `lightroom_settings` | BEFORE UPDATE | `updated_at` |
 
 ## Notification Triggers
 
@@ -44,29 +54,35 @@ Notifications are created automatically when users are tagged or mentioned.
 
 | Trigger | Fires On | Notification Type |
 |---------|----------|-------------------|
-| `create_post_tag_notification` | `post_tagged_users` INSERT | `tag_post` |
-| `create_recipe_tag_notification` | `recipe_tagged_users` INSERT | `tag_recipe` |
-| `create_post_comment_mention_notification` | `post_comment_mentions` INSERT | `mention_post_comment` |
-| `create_recipe_comment_mention_notification` | `recipe_comment_mentions` INSERT | `mention_recipe_comment` |
+| `trigger_post_tag_notification` | `post_tagged_users` INSERT | `tag_post` |
+| `trigger_recipe_tag_notification` | `recipe_tagged_users` INSERT | `tag_recipe` |
+| `trigger_post_comment_mention_notification` | `post_comment_mentions` INSERT | `mention_post_comment` |
+| `trigger_recipe_comment_mention_notification` | `recipe_comment_mentions` INSERT | `mention_recipe_comment` |
 
 <Note>
-  Three collection-related trigger functions exist in the database but are orphaned (no active trigger invokes them): `create_collection_comment_mention_notification`, `create_collection_tag_notification`, and `delete_collection_tag_notification`. These were left behind when collection social features were removed. They are safe to drop.
+  The notification CHECK constraint includes `tag_collection` and `mention_collection_comment` types, but no trigger functions or active triggers exist for these — they are reserved for future collection tagging/commenting features.
 </Note>
 
 ### Cleanup Triggers
 
 | Trigger | Fires On | Action |
 |---------|----------|--------|
-| `delete_post_tag_notification` | `post_tagged_users` DELETE | Removes associated notification |
-| `delete_recipe_tag_notification` | `recipe_tagged_users` DELETE | Removes associated notification |
-| `delete_saved_items_on_post_delete` | `posts` UPDATE (is_deleted) | Removes saved items for deleted post |
-| `delete_saved_items_on_recipe_delete` | `recipes` UPDATE (is_deleted) | Removes saved items for deleted recipe |
+| `trigger_delete_post_tag_notification` | `post_tagged_users` DELETE | Removes associated notification |
+| `trigger_delete_recipe_tag_notification` | `recipe_tagged_users` DELETE | Removes associated notification |
+| `trigger_delete_saved_items_on_post_delete` | `posts` BEFORE DELETE | Removes saved items for hard-deleted post |
+| `trigger_delete_saved_items_on_post_soft_delete` | `posts` AFTER UPDATE | Removes saved items when `is_deleted` set to true |
+| `trigger_delete_saved_items_on_recipe_delete` | `recipes` BEFORE DELETE | Removes saved items for hard-deleted recipe |
+| `trigger_delete_saved_items_on_recipe_soft_delete` | `recipes` AFTER UPDATE | Removes saved items when `is_deleted` set to true |
+
+<Note>
+  The soft-delete cleanup triggers (`trigger_delete_saved_items_on_post_soft_delete` and `trigger_delete_saved_items_on_recipe_soft_delete`) call the same function as their hard-delete counterparts (`delete_saved_items_on_post_delete()` and `delete_saved_items_on_recipe_delete()` respectively). The function handles both cases.
+</Note>
 
 ### Auth Trigger
 
 | Trigger | Fires On | Action |
 |---------|----------|--------|
-| `handle_new_user` | `auth.users` INSERT | Creates a `profiles` row for new signups |
+| `on_auth_user_created` | `auth.users` AFTER INSERT | Calls `handle_new_user()` — creates a `profiles` row for new signups |
 
 ## Counter Validation
 

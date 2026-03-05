@@ -17,12 +17,15 @@ description: "Overview of the Recipe Room iOS app built with Expo and React Nati
 
 ## Architecture
 
-The mobile app mirrors the web app's architecture but adapted for React Native:
+The mobile app connects to Supabase directly — no web API layer in between:
 
-- Direct Supabase queries for reads (not going through the web API)
-- Shared Zod schemas from `@recipe-room/shared` for validation
-- React Query for caching and server state
+- Direct Supabase RPC calls for all reads and writes (create, update, delete)
+- Direct Supabase table queries for simple operations (follows, favorites, saves)
+- Direct Supabase Storage uploads for images
+- Shared Zod schemas from `@recipe-room/shared` for client-side validation
+- React Query for caching, optimistic updates, and server state
 - expo-router for file-based navigation
+- RLS policies are the primary security boundary
 
 ## Navigation Structure
 
@@ -48,13 +51,16 @@ app/
 
 ## Key Differences from Web
 
-| Aspect | Web | Mobile |
+| Aspect | Web (Phase 2) | Mobile (Current) |
 |--------|-----|--------|
-| Data fetching | API routes → Supabase | Direct Supabase queries |
+| Data mutations | API routes → Supabase | Direct Supabase (RPC + table queries) |
+| Data reads | API routes → Supabase | Direct Supabase (RPC + table queries) |
+| Security layer | API routes + RLS | RLS only (primary boundary) |
 | Styling | Tailwind CSS | NativeWind |
 | Routing | Next.js App Router | expo-router |
 | Image handling | next/image | expo-image |
-| Storage | Cookies | expo-secure-store |
+| Image upload | API route → Storage | Direct Supabase Storage |
+| Auth storage | Cookies | expo-secure-store |
 | Haptics | N/A | expo-haptics |
 
 ## Feature Status

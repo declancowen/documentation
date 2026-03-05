@@ -17,7 +17,7 @@ Text comments on recipes and posts with @mention support. Mentioned users receiv
     Type comment, can @mention users via `MentionInput` with `UserSearchPopup`.
   </Step>
   <Step title="Submit">
-    `POST /api/recipes/[id]/comments` or `POST /api/posts/[id]/comments`. Mentioned users get notifications.
+    `supabase.rpc('create_recipe_comment', {...})` or `supabase.rpc('create_post_comment', {...})`. The RPC function extracts @mentions from the content, inserts mention records, and triggers fire to create notifications.
   </Step>
   <Step title="Delete (Own Comments)">
     Swipe-to-delete via `SwipeableCommentItem`.
@@ -81,11 +81,18 @@ When a comment is added via `useAddComment`, the comment count must update every
 
 ## Mention Flow
 
-1. API route extracts @mentions from comment content (using `mentions.ts` utility)
-2. Validates mentioned usernames exist
-3. Inserts comment via RPC
-4. Inserts mention records into `*_comment_mentions` table
-5. Trigger fires → creates notification (type: `mention_recipe_comment` or `mention_post_comment`)
+The `create_post_comment` and `create_recipe_comment` RPC functions handle @mention extraction entirely in the database:
+
+1. Comment is inserted into the comments table
+2. The RPC function extracts @mentions from the content using `regexp_matches(p_content, '@([a-zA-Z0-9_]+)', 'g')`
+3. Mentioned usernames are resolved to user IDs via JOIN to `profiles`
+4. Self-mentions are excluded (`WHERE p.id != p_user_id`)
+5. Mention records are inserted into `*_comment_mentions` table (with `ON CONFLICT DO NOTHING` for safety)
+6. Database trigger fires on the mention INSERT → creates notification (type: `mention_recipe_comment` or `mention_post_comment`)
+
+<Note>
+The mobile app calls `supabase.rpc('create_post_comment')` or `supabase.rpc('create_recipe_comment')` directly. The mention extraction, validation, and notification creation all happen inside the RPC function and its associated triggers — no application-level mention parsing is needed for the database write.
+</Note>
 
 ## Database
 

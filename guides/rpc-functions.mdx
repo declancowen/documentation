@@ -36,18 +36,17 @@ get_follow_content_list(
 ) → json
 ```
 
-### get_posts_list / get_recipes_list / get_collections_list
+### get_posts_list / get_collections_list
 
-Dedicated listing functions for each content type with sorting and pagination.
+Dedicated listing functions for posts and collections with sorting and pagination.
 
 ```sql
 get_posts_list(p_limit, p_offset, p_sort, p_current_user_id) → json
-get_recipes_list(p_limit, p_offset, p_sort, p_current_user_id) → json
 get_collections_list(p_limit, p_offset, p_current_user_id) → json
 ```
 
 <Note>
-  `get_recipes_list` is defined but not yet implemented. Recipe listing currently uses the `recipe_with_stats` view directly.
+  There is no `get_recipes_list` RPC function. Recipe listing is handled through `get_discover_content_list` (which returns mixed content) or via direct Supabase table queries. There are also no database views like `recipe_with_stats` or `collection_with_stats` — all stats are denormalized directly on the parent tables.
 </Note>
 
 ## Detail Functions
@@ -124,14 +123,12 @@ Fetch just the collections for a user profile. Used for paginated collection loa
 ```sql
 get_user_profile_collections(
   p_username text,
-  p_current_user_id uuid DEFAULT NULL,
   p_limit integer DEFAULT 8,
   p_offset integer DEFAULT 0
 ) → json
 
 get_user_profile_collections_by_id(
   p_user_id uuid,
-  p_current_user_id uuid DEFAULT NULL,
   p_limit integer DEFAULT 8,
   p_offset integer DEFAULT 0
 ) → json
@@ -186,7 +183,12 @@ get_comments(
 
 ### delete_post_comment / delete_recipe_comment
 
-Deletes a comment if the user is the author.
+Deletes a comment if the user is the author. Returns `true` on success.
+
+```sql
+delete_post_comment(p_comment_id uuid, p_user_id uuid) → boolean
+delete_recipe_comment(p_comment_id uuid, p_user_id uuid) → boolean
+```
 
 ## CRUD Functions
 
@@ -212,7 +214,31 @@ Same parameter set as create, updates only provided fields.
 
 ### create_post / update_post / delete_post / delete_recipe
 
-Similar atomic operations for posts and soft-delete operations.
+```sql
+create_post(
+  p_user_id uuid, p_title text, p_caption text,
+  p_camera_model text, p_film_simulation text,
+  p_images text[], p_cover_index integer,
+  p_tags text[], p_recipe_id uuid, p_collection_id uuid
+) → TABLE(id, title, caption, camera_model, film_simulation, cover_image_url, cover_index, created_at, user_id, recipe_id, collection_id)
+
+update_post(
+  p_post_id uuid, p_user_id uuid,
+  p_title text, p_caption text, p_camera_model text,
+  p_film_simulation text, p_tags text[],
+  p_recipe_id uuid, p_collection_id uuid
+) → TABLE(id, title, caption, camera_model, film_simulation, recipe_id, collection_id, updated_at)
+
+delete_post(p_post_id uuid, p_user_id uuid)
+  → TABLE(id, deleted_at)
+
+delete_recipe(p_recipe_id uuid, p_user_id uuid)
+  → TABLE(id, image_urls text[], deleted_at)
+```
+
+<Note>
+  `create_post` does NOT accept `p_tagged_user_ids` — unlike `create_recipe`, post tagging is handled separately. `delete_recipe` returns `image_urls` so the client can clean up storage after soft-delete.
+</Note>
 
 ### delete_user_account
 
@@ -228,9 +254,21 @@ delete_user_account(p_user_id uuid) → void
 
 Fetches the saved page overview for a user.
 
+```sql
+get_saved_page_data(p_user_id uuid) → json
+```
+
 ### get_uncategorized_saved_items
 
-Gets saved items not in any collection.
+Gets saved items not in any collection, with pagination.
+
+```sql
+get_uncategorized_saved_items(
+  p_user_id uuid,
+  p_limit integer DEFAULT 12,
+  p_offset integer DEFAULT 0
+) → json
+```
 
 ### get_user_collections_for_save_modal
 
@@ -270,7 +308,16 @@ check_username_available(
 
 ### update_user_profile
 
-Atomic profile update.
+Atomic profile update. Returns the updated profile row.
+
+```sql
+update_user_profile(
+  p_user_id uuid,
+  p_username text, p_first_name text, p_surname text,
+  p_location text, p_bio text, p_instagram_handle text,
+  p_avatar_url text, p_cover_photo_url text
+) → SETOF profiles
+```
 
 ### validate_all_counters
 

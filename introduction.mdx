@@ -7,35 +7,121 @@ description: "Developer documentation for Recipe Room — a Fujifilm film simula
 
 Recipe Room is a social platform for sharing Fujifilm camera film simulation recipes. Users create, share, and discover custom film simulation settings for Fujifilm X-series cameras, organize them into collections, and engage with the community through posts, follows, and favorites.
 
+The platform is currently mobile-first — the iOS app is the primary product, connecting directly to Supabase for all data operations. A full web client is planned for Phase 2.
+
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Web Frontend | Next.js 14 (App Router), React 18, TypeScript |
-| Mobile | Expo SDK 54, expo-router, NativeWind |
-| Backend | Next.js API Routes (serverless on Vercel) |
-| Database | PostgreSQL via Supabase |
-| Storage | Supabase Storage (avatars, recipe-images, post-images) |
-| Auth | Supabase Auth (email/password) |
-| Email | Loops.so |
-| UI | shadcn/ui + Tailwind CSS |
-| State | React Query, React Context, React Hook Form + Zod |
-| Testing | Jest, React Testing Library, fast-check |
+| Layer | Technology | Status |
+|-------|------------|--------|
+| Mobile App | Expo SDK 54, expo-router, NativeWind | Active — primary product |
+| Web Interim | Next.js 14 (App Router), Tailwind CSS | Active — supports mobile |
+| Web App | Next.js 14 (App Router), React 18, shadcn/ui | Phase 2 — scaffolded, not yet built |
+| Database | PostgreSQL via Supabase | Active |
+| Auth | Supabase Auth (email/password) | Active |
+| Storage | Supabase Storage (4 public buckets) | Active |
+| Security | Supabase Row Level Security (RLS) | Active — primary security boundary |
+| Shared Package | TypeScript types, Zod schemas, constants | Active |
+| Email | Loops.so (transactional + audience) | Active |
 
 ## Monorepo Structure
 
 ```
 recipe-room-monorepo/
 ├── apps/
-│   ├── web/          # Next.js 14 web application
-│   └── mobile/       # React Native (Expo) iOS app
+│   ├── mobile/        # React Native (Expo) iOS app
+│   ├── web-interim/   # Interim web app — auth callbacks, deep links, landing page
+│   └── web/           # Full Next.js web client (Phase 2 — scaffolded, not active)
 ├── packages/
-│   └── shared/       # Shared types, validation, constants
-├── docs/             # Documentation
-└── supabase/         # Database schema and migrations
+│   └── shared/        # Shared types, Zod validation, constants, API utilities
+├── supabase/          # Database migrations
+└── docs/              # This documentation (Mintlify)
 ```
 
-The monorepo is managed with pnpm workspaces. The `@recipe-room/shared` package provides types, Zod validation schemas, constants, and API utilities shared between web and mobile.
+The monorepo is managed with pnpm workspaces. The `@recipe-room/shared` package provides types, Zod validation schemas, constants, and API utilities shared between all apps.
+
+## Apps — What They Are and Where They Sit
+
+<AccordionGroup>
+  <Accordion title="apps/mobile — iOS App (Active)">
+    The primary product. A React Native app built with Expo SDK 54 and expo-router, deployed to the App Store via EAS Build.
+
+    Connects directly to Supabase for everything — reads, writes, auth, storage. No web API layer in between. RLS policies are the security boundary.
+
+    This is where all current development happens.
+  </Accordion>
+  <Accordion title="apps/web-interim — Interim Web App (Active)">
+    A standalone Next.js 14 app that supports the mobile app while we wait to build the full web client in Phase 2. It handles:
+
+    - Auth callbacks (email confirmation, password reset, email change)
+    - Deep link verification (AASA for iOS universal links, Android Asset Links)
+    - Content redirect pages (recipe/post/collection URLs → deep link into app or "app only" fallback)
+    - Public landing page with waitlist signup
+
+    This is NOT the full web client. It has no content CRUD, no API routes for data mutations, and no dependency on `@recipe-room/shared`. It's a separate, lightweight app with its own `package.json` and `node_modules`.
+  </Accordion>
+  <Accordion title="apps/web — Full Web Client (Phase 2 — Not Active)">
+    The scaffolded Next.js 14 web application with App Router, shadcn/ui, and full API routes. This is where the web client will live when we build it out in Phase 2.
+
+    It contains API route scaffolding (`/api/auth`, `/api/recipes`, `/api/posts`, etc.), middleware for auth-based route protection, and the full component library. But it is not the current focus — the mobile app and web interim are what's live today.
+
+    When Phase 2 begins, this app will use the same Supabase backend and `@recipe-room/shared` package, but route mutations through server-side API routes (with the service role key) rather than direct Supabase calls.
+  </Accordion>
+</AccordionGroup>
+
+
+## Supabase Infrastructure
+
+The entire backend runs on Supabase. Here's what's set up and how it's secured.
+
+### Storage Buckets
+
+Four public buckets for user-uploaded images. All buckets enforce ownership via storage policies — users can only upload, update, and delete files in their own folder (`auth.uid()` matches the first folder segment).
+
+| Bucket | Public | Purpose | Upload Policy |
+|--------|--------|---------|---------------|
+| `avatars` | Yes | Profile photos | Owner only (`auth.uid() = folder[1]`) |
+| `cover-photos` | Yes | Profile cover images | Owner only |
+| `recipe-images` | Yes | Recipe photos (up to 10 per recipe) | Any authenticated user* |
+| `post-images` | Yes | Post photos (multi-image) | Owner only |
+
+<Note>
+`recipe-images` has a slightly broader INSERT policy — any authenticated user can upload (not just folder-owner). This is because the RPC function `create_recipe` handles the folder path assignment. All other operations (UPDATE, DELETE) still require folder ownership.
+</Note>
+
+### Row Level Security (RLS)
+
+Every table has RLS enabled. This is the primary security boundary for the mobile app — since the mobile client talks to Supabase directly with the anon key + user JWT, RLS is what prevents unauthorized access.
+
+The general pattern:
+
+| Pattern | Tables | SELECT | INSERT | UPDATE | DELETE |
+|---------|--------|--------|--------|--------|--------|
+| Public read, owner write | `recipes`, `posts`, `collections` | `is_deleted = false OR owner` | `auth.uid() = user_id` | `auth.uid() = user_id` | `auth.uid() = user_id` |
+| Public read, owner write | `follows`, `recipe_favorites`, `post_favorites`, `recipe_reposts`, `post_reposts` | `true` | `auth.uid() = user_id` | — | `auth.uid() = user_id` |
+| Public read, parent-owner write | `recipe_images`, `recipe_tags`, `post_images`, `post_tags`, `recipe_tagged_users`, `post_tagged_users`, `lightroom_settings` | `true` (or parent not deleted) | Owner of parent record | Owner of parent | Owner of parent |
+| Public read, parent-owner write | `recipe_comments`, `post_comments` | Parent `is_deleted = false` | `auth.uid() = user_id` | — | `auth.uid() = user_id` |
+| Public read, parent-owner write | `recipe_comment_mentions`, `post_comment_mentions` | `true` | Comment author | — | Comment author |
+| Private to owner | `saved_items` | `user_id = auth.uid()` | `user_id = auth.uid()` | — | `user_id = auth.uid()` |
+| Private to owner | `notifications` | `recipient_id = auth.uid()` | `actor_id = auth.uid()` | `recipient_id = auth.uid()` | `recipient_id = auth.uid()` |
+| Owner-scoped via parent | `collection_saved_items` | `true` | Owner of collection AND saved item | — | Owner of collection |
+| Public read, self only | `profiles` | `true` | `auth.uid() = id` | `auth.uid() = id` | — |
+
+<Warning>
+There are NO database views. The project rules reference `recipe_with_stats` and `collection_with_stats` — these do not exist. All stats (favorite_count, comment_count, repost_count) are denormalized directly on the parent tables. Author info is joined inline by RPC functions.
+</Warning>
+
+### Storage Policies (Detail)
+
+All four buckets are publicly readable. Write operations are restricted:
+
+| Bucket | SELECT | INSERT | UPDATE | DELETE |
+|--------|--------|--------|--------|--------|
+| `avatars` | Public | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` |
+| `cover-photos` | Public | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` |
+| `recipe-images` | Public | `auth.role() = 'authenticated'` | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` |
+| `post-images` | Public | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` | `auth.uid() = folder[1]` |
+
+The folder structure is `{user_id}/{filename}` — the first path segment is always the user's UUID, which is what the policies check against `auth.uid()`.
 
 ## Core Concepts
 
