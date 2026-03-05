@@ -217,7 +217,7 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/declancowen",
+          "href": "https://github.com/declancowen/recipe-room-monorepo",
           "icon": "github"
         }
       ]
@@ -236,7 +236,7 @@
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/declancowen"
+      "github": "https://github.com/declancowen/recipe-room-monorepo"
     }
   }
 }
