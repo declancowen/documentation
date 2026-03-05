@@ -1,0 +1,165 @@
+---
+title: Login & Auth
+description: "User authentication, session management, password recovery, and the complete auth callback chain."
+---
+
+## What It Does
+
+User authentication with email/password, persistent session management via secure storage, password recovery through web interim callback chain, and email change with double-confirmation flow.
+
+## User Flow (Mobile)
+
+<Steps>
+  <Step title="Unauthenticated State">
+    App opens → if not authenticated, only Discover, Search, and Profile tabs are visible (Home and Saved are hidden).
+  </Step>
+  <Step title="Login">
+    Taps login → `app/login.tsx` → enters email + password → client-side Zod validation (`loginSchema`) → `POST /api/auth/login`.
+  </Step>
+  <Step title="Session Established">
+    On success → `AuthProvider` stores session, app re-renders with all 5 tabs visible.
+  </Step>
+</Steps>
+
+## Screens & Components
+
+| Platform | Screen | Purpose |
+|----------|--------|---------|
+| Mobile | `app/login.tsx` | Login form, "Forgot password?" link |
+| Mobile | `app/forgot-password.tsx` | Password reset request form |
+| Web Interim | `/reset-password` | Password reset page (after clicking recovery link) |
+| Web Interim | `/confirmation-success` | Email confirmed success page |
+| Web Interim | `/email-change-pending` | Waiting for new email confirmation |
+| Web Interim | `/change-email` | Email change success page |
+| Web Interim | `/auth/auth-error` | Auth link invalid/expired error page |
+
+## API Route
+
+**`POST /api/auth/login`**
+- Validates body with `loginSchema`
+- Calls `supabase.auth.signInWithPassword({ email, password })`
+- Returns session data (access_token, refresh_token)
+
+<Note>
+On mobile, the `AuthProvider` calls `supabase.auth.signInWithPassword()` directly — it does not go through the web API route. The `/api/auth/login` route exists for the web client (Phase 2).
+</Note>
+
+## Mobile Auth Architecture
+
+### AuthProvider
+
+`AuthProvider` (`src/providers/AuthProvider.tsx`) wraps the entire app and exposes:
+
+| Property/Method | Purpose |
+|----------------|---------|
+| `user` | Current Supabase user object |
+| `session` | Current session with tokens |
+| `isAuthenticated` | Boolean |
+| `isLoading` | Auth state loading |
+| `signIn(email, password)` | Email/password login |
+| `signUp(email, password, metadata)` | Registration (also enrolls in Loops.so) |
+| `signOut()` | Logout + cache clear |
+| `handleUnauthorized()` | Called by `useApiErrorHandler` on 401 → auto-logout |
+| `updateSession()` | Force session refresh |
+
+### Supabase Client Configuration
+
+`apps/mobile/src/lib/supabase.ts` differs from the web client:
+- Uses `SecureStoreAdapter` wrapping `expo-secure-store` for token persistence
+- `detectSessionInUrl: false` (mobile doesn't handle URL-based auth)
+- `flowType: 'pkce'` (Proof Key for Code Exchange)
+- Env vars: `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+### Provider Hierarchy
+
+```
+SafeAreaProvider
+  └─ ThemeProvider
+       └─ GestureHandlerRootView
+            └─ QueryClientProvider (staleTime: 5min, retry: 2)
+                 └─ AuthProvider
+                      └─ ToastProvider
+                           └─ ProfileProvider
+                                └─ SearchProvider
+                                     └─ AuthOverlayProvider
+                                          └─ SaveProvider
+                                               └─ Stack Navigator
+```
+
+### Tab Visibility (Auth-Dependent)
+
+| State | Visible Tabs |
+|-------|-------------|
+| Authenticated | Home, Discover, Search, Saved, Profile (5 tabs) |
+| Unauthenticated | Discover, Search, Profile (3 tabs — Home and Saved hidden via `href: null`) |
+
+### AuthOverlayProvider
+
+Intercepts actions that require auth (favorite, save, comment, follow) and shows a login prompt overlay instead of navigating to login screen. Smoother UX for unauthenticated browsing.
+
+## Auth Callback Chain (Web Interim)
+
+The web interim (`apps/web-interim`) handles all Supabase email-based auth flows. This is critical infrastructure.
+
+### Dual Auth Flow (PKCE vs Implicit)
+
+| Flow | When Used | Token Location |
+|------|-----------|---------------|
+| PKCE | Mobile registration | `code` query parameter |
+| Implicit | Password recovery, email change | `#` hash fragment with `access_token`, `refresh_token`, `type` |
+
+### Callback Processing
+
+<Steps>
+  <Step title="User clicks email link">
+    Arrives at web interim root or `/auth/callback`
+  </Step>
+  <Step title="AuthCallbackHandler detects flow type">
+    - `code` param → PKCE → exchanges code for session → checks `type` for redirect
+    - Hash with `type=recovery` → redirects to `/reset-password`
+    - Hash with `type=email_change` → redirects to `/change-email`
+    - Hash with `type=signup` → redirects to `/confirmation-success`
+    - Error params → redirects to `/auth/auth-error`
+  </Step>
+</Steps>
+
+### Password Recovery Flow
+
+1. User taps "Forgot password?" on mobile → `app/forgot-password.tsx`
+2. Enters email → `POST /api/auth/forgot-password` → Supabase sends recovery email
+3. User clicks link → web interim detects `type=recovery` → `/reset-password`
+4. Sets new password via `supabase.auth.updateUser({ password })`
+
+<Note>
+The recovery flow is web-only — the user is sent to the web interim's reset password page, not a mobile screen.
+</Note>
+
+### Email Change Flow (Double Confirmation)
+
+1. User initiates email change from mobile settings
+2. Supabase sends confirmation to OLD email → web interim → `/email-change-pending`
+3. Supabase sends confirmation to NEW email → web interim → `/change-email`
+
+## API Error Handling
+
+`apps/mobile/src/lib/api.ts` provides:
+- `ApiError` class with `code`, `status`, `details` + convenience getters (`isUnauthorized`, `isNotFound`, `isServerError`)
+- `handleSupabaseQuery(query)` — wraps Supabase queries with error handling
+- `getAuthToken()` — retrieves current session token for API calls
+- `useApiErrorHandler` hook integrates with `AuthProvider.handleUnauthorized()` to auto-logout on 401
+
+<Warning>
+Both `packages/shared/src/api/client.ts` and `apps/mobile/src/lib/api.ts` define their own `ApiError` class. The mobile version is more feature-rich. Be careful to import the correct one.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Registration" icon="user-plus" href="/journeys/registration">
+    Account creation flow
+  </Card>
+  <Card title="Profile" icon="user" href="/journeys/profile">
+    Profile management
+  </Card>
+  <Card title="Web Interim" icon="globe" href="/journeys/web-interim">
+    Auth callback infrastructure
+  </Card>
+</CardGroup>

@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Reference",
         "groups": [
           {
             "group": "Getting Started",
@@ -55,6 +55,60 @@
               "mobile/setup",
               "mobile/dual-config",
               "mobile/building"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Feature Journeys",
+        "groups": [
+          {
+            "group": "Onboarding",
+            "pages": [
+              "journeys/registration",
+              "journeys/login"
+            ]
+          },
+          {
+            "group": "Content Creation",
+            "pages": [
+              "journeys/create-modal",
+              "journeys/recipes",
+              "journeys/posts",
+              "journeys/collections",
+              "journeys/image-upload"
+            ]
+          },
+          {
+            "group": "Engagement",
+            "pages": [
+              "journeys/favorites",
+              "journeys/follows",
+              "journeys/reposts",
+              "journeys/comments",
+              "journeys/saved-items"
+            ]
+          },
+          {
+            "group": "Discovery",
+            "pages": [
+              "journeys/feeds",
+              "journeys/search",
+              "journeys/notifications"
+            ]
+          },
+          {
+            "group": "Profile",
+            "pages": [
+              "journeys/profile"
+            ]
+          },
+          {
+            "group": "Common Patterns",
+            "pages": [
+              "journeys/common-components",
+              "journeys/deep-linking",
+              "journeys/web-interim"
             ]
           }
         ]

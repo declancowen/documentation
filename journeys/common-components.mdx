@@ -1,0 +1,260 @@
+---
+title: Common Components & Patterns
+description: "Reusable components, hooks, utilities, and patterns shared across all features."
+---
+
+## Component Library (Primitives)
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `BaseCard` | `src/components/primitives/BaseCard.tsx` | Base card wrapper with consistent styling |
+| `BaseModal` | `src/components/primitives/BaseModal.tsx` | Base modal with backdrop, animation |
+| `BasePickerModal` | `src/components/primitives/BasePickerModal.tsx` | Modal with picker/selection UI |
+| `SettingRow` | `src/components/primitives/SettingRow.tsx` | Settings list row |
+| `SettingSection` | `src/components/primitives/SettingSection.tsx` | Settings group section |
+
+## Common Components
+
+| Component | Purpose |
+|-----------|---------|
+| `ContentDetailView` | Shared detail view layout for recipes/posts |
+| `ContentDetailSkeleton` | Loading skeleton for detail views |
+| `DetailViewHelpers` | Shared helper functions (utility module, not a component) |
+| `ImageCarousel` / `PhotoCarousel` | Swipeable image carousel with pagination dots |
+| `ImageLightbox` | Full-screen zoomable image viewer |
+| `ZoomableImage` | Pinch-to-zoom image component |
+| `ImageMasonryGrid` | Image-only masonry grid |
+| `EmptyState` | Empty state placeholder |
+| `ErrorState` | Error state with retry |
+| `LoadingState` | Loading spinner/skeleton |
+| `ErrorBoundary` / `ScreenErrorBoundary` | Error boundary wrappers |
+| `RelativeTime` | "2 hours ago" timestamp display |
+| `TruncatedCaption` | Expandable text with "more" |
+| `PrivacyBadge` | Public/private indicator |
+| `DismissKeyboard` | Tap-to-dismiss keyboard wrapper |
+| `ConfirmDeleteModal` | Destructive action confirmation |
+| `LinkedContentCard` | Card showing linked recipe/collection |
+| `ImagePlaceholder` / `ImageWithPlaceholder` | Image loading states |
+| `PaginationDots` | Carousel page indicators |
+| `HeartAnimation` | Animated heart for double-tap like |
+| `UserCard` | User card for follower/following lists and search results |
+| `SplashScreen` | Custom animated splash screen — plays after native splash hides, deep links deferred until complete |
+
+## Auth Components
+
+`AuthGuard` (`src/components/auth/AuthGuard.tsx`) — wraps screens that require authentication.
+
+## Theme System
+
+Three-mode theme: light, dark, system (follows device).
+
+| Piece | Purpose |
+|-------|---------|
+| `ThemeProvider` (`src/providers/ThemeProvider.tsx`) | Manages theme state |
+| `useTheme` hook | Returns `colors`, `isDark`, `resolvedTheme` |
+| Persistence | `AsyncStorage` with key `recipe-room-theme-mode` |
+| `ThemeSelector` | Settings component for user selection |
+
+Mobile uses its own `LIGHT_COLORS` / `DARK_COLORS` (slate-based palette) rather than the shared package design tokens.
+
+<Warning>
+The shared package (`packages/shared/src/constants/theme.ts`) exports a complete design token system with `lightTheme` / `darkTheme` objects (red primary scale, neutral scale, semantic colors). The mobile `ThemeProvider` uses its own separate color system. This inconsistency is worth reviewing during the audit.
+</Warning>
+
+## Toast System
+
+| Piece | Purpose |
+|-------|---------|
+| `ToastProvider` (`src/providers/ToastProvider.tsx`) | Manages toast notification state |
+| `useToast` hook | Returns `showToast(message, type?)` |
+| Types | `success` (green), `error` (red), `info` (blue) — defaults to `info` |
+| Animation | Animated slide-in/out with Reanimated |
+
+Used across all CRUD operations for success/error feedback.
+
+## Stack Navigation Configuration
+
+The root layout (`app/_layout.tsx`) configures Expo Router's Stack navigator:
+
+| Screen | Config |
+|--------|--------|
+| Default | `slide_from_right`, `gestureEnabled: true`, `fullScreenGestureEnabled: true` (iOS full-screen back swipe) |
+| Tabs | `animation: 'none'`, `gestureEnabled: false` (prevents swiping back from tabs) |
+| Modals (`save`, `create`) | `presentation: 'containedTransparentModal'`, `animation: 'fade'`, transparent background |
+
+`SaveModal` is rendered outside the Stack (always mounted in root, controlled by `SaveProvider`).
+
+## Common Hooks
+
+| Hook | File | Purpose |
+|------|------|---------|
+| `useAuth` | `useAuth.ts` | Auth state, user, isAuthenticated |
+| `useAuthOverlay` | `useAuthOverlay.ts` | Auth-gated action handling |
+| `useTheme` | `useTheme.ts` | Theme colors, isDark, resolvedTheme |
+| `useDebounce` | `useDebounce.ts` | Debounce values |
+| `useHaptics` | `useHaptics.ts` | Haptic feedback |
+| `useInfiniteScroll` | `useInfiniteScroll.ts` | Infinite scroll pagination |
+| `useScrollPosition` | `useScrollPosition.ts` | Scroll position tracking |
+| `useReducedMotion` | `useReducedMotion.ts` | Accessibility: reduced motion preference |
+| `useImageDimensions` | `useImageDimensions.ts` | Image dimension calculation |
+| `useImageUpload` | `useImageUpload.ts` | Image upload with progress |
+| `useCommentModal` | `useCommentModal.ts` | Comment modal state |
+| `useMentionInput` | `useMentionInput.ts` | @mention input logic |
+| `useProfileUpdate` | `useProfileUpdate.ts` | Profile edit mutations |
+| `useApiErrorHandler` | `useApiErrorHandler.ts` | Standardized API error handling |
+| `useUsernameCheck` | `useUsernameCheck.ts` | Debounced username availability via RPC |
+| `useToast` | `useToast.ts` | Toast notifications |
+
+## Context Providers
+
+| Provider | File | Purpose |
+|----------|------|---------|
+| `AuthProvider` | `providers/AuthProvider.tsx` | Session management, user state |
+| `ThemeProvider` | `providers/ThemeProvider.tsx` | Dark/light/system theme |
+| `ToastProvider` | `providers/ToastProvider.tsx` | Toast notifications |
+| `ProfileProvider` | `context/ProfileContext.tsx` | Profile navigation state |
+| `SaveProvider` | `context/SaveContext.tsx` | Save modal state, auto-save |
+| `SearchProvider` | `context/SearchContext.tsx` | Search query/results state |
+| `AuthOverlayProvider` | `context/AuthOverlayContext.tsx` | Auth-gated action interception |
+| `TabBarScrollContext` | `context/TabBarScrollContext.tsx` | Tab bar hide/show animation |
+
+## Utility Modules
+
+| Utility | File | Purpose |
+|---------|------|---------|
+| `deepLinking` | `utils/deepLinking.ts` | Universal link + custom scheme handling |
+| `imageOptimization` | `utils/imageOptimization.ts` | Client-side image resize/compress |
+| `imagePreloading` | `utils/imagePreloading.ts` | Preload images for smooth UX |
+| `flatListOptimization` | `utils/flatListOptimization.ts` | FlatList performance tuning |
+| `masonry` / `masonryPairing` / `imageMasonryGrid` | `utils/masonry*.ts` | Masonry layout algorithms |
+| `mentions` | `utils/mentions.ts` | @mention parsing/extraction |
+| `metadataPills` | `utils/metadataPills.ts` | Metadata pill generation |
+| `recipeSettings` | `utils/recipeSettings.ts` | Recipe settings formatting |
+| `textUtils` | `utils/textUtils.ts` | Text truncation, formatting |
+| `accessibility` | `utils/accessibility.ts` | Accessibility helpers |
+| `connectionFilters` | `utils/connectionFilters.ts` | Follower/following list filtering |
+| `contentDetailView` | `utils/contentDetailView.ts` | Detail view helpers |
+| `errorLogging` | `utils/errorLogging.ts` | Error logging utilities |
+| `lruCache` | `utils/lruCache.ts` | LRU cache implementation |
+| `memoization` | `utils/memoization.ts` | Memoization utilities |
+
+## Constants
+
+- `src/constants/layout.ts` — Layout dimensions, spacing
+- `src/constants/accessibility.ts` — Accessibility constants
+- `src/constants/index.ts` — Barrel export
+
+## Shared Package (`packages/shared`)
+
+| Module | Path | Contents |
+|--------|------|----------|
+| Types | `src/types/database.ts` | Database types (snake_case) |
+| | `src/types/api.ts` | API response types (camelCase) |
+| | `src/types/forms.ts` | Form types |
+| Validation | `src/validation/index.ts` | Zod schemas (registerSchema, loginSchema, recipeSchema, postSchema, postUpdateSchema, collectionSchema, etc.) |
+| API | `src/api/client.ts` | Platform-agnostic `ApiClient` class. Auto-prepends `/api`. `credentials: 'include'`. Includes its own `ApiError` class and `buildQueryString()`. |
+| | `src/api/queryKeys.ts` | React Query key factories. Domains: auth, users, recipes, posts, collections, saved, favorites, reposts, creators, notifications, search. |
+| | `src/api/supabase.ts` | Platform-agnostic Supabase client factory. `StorageAdapter` interface, `MemoryStorage` fallback. |
+| Constants | `src/constants/routes.ts` | `WEB_ROUTES` (path-based) and `MOBILE_ROUTES` (Expo Router names), both `as const`. |
+| | `src/constants/theme.ts` | Design tokens: colors, spacing, borderRadius, fontSize, fontWeight, lineHeight, lightTheme/darkTheme. |
+| | `src/constants/index.ts` | Film simulation options, camera model arrays, dynamic range options, grain effect options, sort options, tag suggestions. |
+| Utils | `src/utils/tagSuggestions.ts` | Tag autocomplete suggestions |
+
+<Warning>
+Both `packages/shared/src/api/client.ts` and `apps/mobile/src/lib/api.ts` define their own `ApiError` class. The shared version is generic/platform-agnostic. The mobile version has convenience getters (`isUnauthorized`, `isNotFound`, `isServerError`) and is tightly integrated with the mobile auth flow. Import the correct one for your context.
+</Warning>
+
+## Denormalized Counter System
+
+All engagement counts are denormalized into parent tables for fast reads. Triggers keep them in sync. The `validate_all_counters` RPC can audit all counters and report mismatches.
+
+## Cross-Screen Cache Sync Architecture
+
+This is the most critical pattern in the mobile app. When a user favorites, comments, saves, or follows, the change must appear instantly on every screen — detail views, feed cards, masonry grids, profile stats — without a full refetch that would cause layout jumps.
+
+### The Pattern
+
+Every engagement mutation hook follows this structure:
+
+```
+onMutate (BEFORE the API call):
+  1. Cancel all outgoing refetches (prevents overwriting optimistic state)
+  2. Snapshot previous state for every affected cache entry
+  3. Walk every page of every infinite query and update the matching item
+  4. Update detail view cache
+
+mutationFn:
+  Direct Supabase call (supabase.from().insert/delete or supabase.rpc())
+
+onError:
+  Rollback every cache entry to its snapshot
+
+onSettled:
+  Varies by action (see below)
+```
+
+### Invalidation Strategy Per Action
+
+| Action | onSettled Behavior | Why |
+|--------|-------------------|-----|
+| Favorite (recipe/post) | NO invalidation | Invalidating causes masonry grid to re-render and items to jump/disappear |
+| Comment | NO invalidation (count updated optimistically) | Same reason — list views would flash |
+| Save/unsave | Narrow invalidation: specific item status + saved items list | Save state is per-item, doesn't affect grid layout |
+| Collection membership | Narrow invalidation: item status + collection detail | Only affects the specific collection view |
+| Repost | `invalidateQueries({ queryKey: queryKeys.recipes.all })` | Less latency-sensitive than heart animation |
+| Follow/unfollow | Invalidate `users.profile` + `users.followers` | Profile data needs fresh counts |
+| Create/delete content | Invalidate `recipes.all`, `collections.all`, `saved.all` | New content needs to appear in feeds |
+
+### Which Caches Get Updated Per Action
+
+| Action | Detail View | Recipe Lists | Post Lists | Mixed Feeds | Save Status | Profile |
+|--------|------------|-------------|-----------|-------------|-------------|---------|
+| Favorite recipe | ✅ `isFavorited`, `favoriteCount` | ✅ all pages | — | ✅ all pages | — | — |
+| Favorite post | ✅ `isFavorited`, `favoriteCount` | — | ✅ all pages | — | — | — |
+| Add comment | ✅ `commentCount` | ✅ `comment_count` all pages | ✅ `comment_count` all pages | — | — | — |
+| Save item | — | — | — | — | ✅ toggle | — |
+| Follow user | — | — | — | — | — | ✅ counts |
+
+### Data Access: Direct Supabase, Not Web API Routes
+
+<Warning>
+The mobile app calls Supabase directly via `supabase.rpc()` and `supabase.from()`. It does NOT route through the Next.js API routes in `apps/web`. The web API routes exist for the web client (Phase 2). The mobile hooks in `src/hooks/api/` are the source of truth for how mobile data flows.
+</Warning>
+
+| Mobile Hook | Supabase Call |
+|------------|--------------|
+| `useDiscoverContent` | `supabase.rpc('get_discover_content_list')` |
+| `usePosts` (following) | `supabase.rpc('get_follow_content_list')` |
+| `useRecipe(id)` | `supabase.rpc('get_recipe_detail')` |
+| `usePost(id)` | `supabase.rpc('get_post_detail')` |
+| `useCreateRecipe` | `supabase.rpc('create_recipe')` |
+| `useCreatePost` | `supabase.rpc('create_post')` |
+| `useToggleFavorite` | `supabase.from('recipe_favorites').insert/delete` |
+| `useTogglePostLike` | `supabase.from('post_favorites').insert/delete` |
+| `useToggleRepost` | `supabase.from('recipe_reposts').insert/delete` |
+| `useToggleStandalone` | `supabase.from('saved_items').insert/delete` |
+| `useAddComment` | `supabase.rpc('create_recipe_comment')` / `supabase.rpc('create_post_comment')` |
+| `useFollowUser` | `supabase.from('follows').insert` |
+| `useSaveStatus` | `supabase.from('saved_items').select` + `supabase.from('collection_saved_items').select` |
+| `useSavedItemIds` | `supabase.from('saved_items').select` → returns `Set<string>` for O(1) lookup |
+
+## Denormalized Counter Table
+
+| Counter | Table | Maintained By Trigger On |
+|---------|-------|------------------------|
+| `recipes.favorite_count` | `recipes` | `recipe_favorites` INSERT/DELETE |
+| `recipes.comment_count` | `recipes` | `recipe_comments` INSERT/DELETE |
+| `recipes.repost_count` | `recipes` | `recipe_reposts` INSERT/DELETE |
+| `posts.favorite_count` | `posts` | `post_favorites` INSERT/DELETE |
+| `posts.comment_count` | `posts` | `post_comments` INSERT/DELETE |
+| `posts.repost_count` | `posts` | `post_reposts` INSERT/DELETE |
+| `profiles.recipe_count` | `profiles` | `recipes` INSERT/UPDATE/DELETE |
+| `profiles.post_count` | `profiles` | `posts` INSERT/UPDATE/DELETE |
+| `profiles.collection_count` | `profiles` | `collections` INSERT/UPDATE/DELETE |
+| `profiles.follower_count` | `profiles` | `follows` INSERT/DELETE |
+| `profiles.following_count` | `profiles` | `follows` INSERT/DELETE |
+| `collections.item_count` | `collections` | `collection_saved_items` INSERT/DELETE |
+
+<Warning>
+The existing docs and project rules reference `recipe_with_stats` and `collection_with_stats` views — these do NOT exist in the database. All stats are denormalized directly on the parent tables. RPC functions handle joins inline.
+</Warning>

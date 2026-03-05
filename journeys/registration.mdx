@@ -1,0 +1,97 @@
+---
+title: Registration
+description: "New user account creation — from form submission to profile creation."
+---
+
+## What It Does
+
+New user account creation with email/password authentication, real-time username availability checking, and automatic profile provisioning via database trigger.
+
+## User Flow (Mobile)
+
+<Steps>
+  <Step title="Navigate to Register">
+    User taps "Register" on the login screen → navigates to `app/register.tsx`
+  </Step>
+  <Step title="Fill in Details">
+    Username, first name, surname, email, password. Client-side Zod validation via `registerSchema` from the shared package. Username availability checked in real-time via `useUsernameCheck` hook (debounced 300ms, calls `check_username_available` RPC).
+  </Step>
+  <Step title="Submit">
+    `POST /api/auth/register` — creates user via Supabase Admin Auth with `email_confirm: true`. Passes `username`, `first_name`, `surname` in `user_metadata`.
+  </Step>
+  <Step title="Confirmation">
+    On success → navigates to `app/register-success.tsx`. User receives confirmation email.
+  </Step>
+  <Step title="Email Verification">
+    User clicks confirmation link → web interim `AuthCallbackHandler` processes the token → redirects to `/confirmation-success` success page.
+  </Step>
+</Steps>
+
+## Screens & Components
+
+| Platform | Screen | Components |
+|----------|--------|------------|
+| Mobile | `app/register.tsx` | Form fields, validation display, `useUsernameCheck` for real-time availability |
+| Mobile | `app/register-success.tsx` | Success confirmation |
+| Web Interim | `/confirmation-success` | Email verified success page (after clicking confirmation link) |
+
+## API Route
+
+**`POST /api/auth/register`**
+
+- Validates body with `registerSchema` (Zod)
+- Creates user via `supabase.auth.admin.createUser()` with `email_confirm: true`
+- Passes `username`, `first_name`, `surname` in `user_metadata`
+- On success, enrolls user in Loops.so for welcome email via `POST https://app.loops.so/api/v1/contacts/create`
+
+<Note>
+Registration is one of the few flows where the mobile app DOES call a web API route — it needs the server-side `supabase.auth.admin.createUser()` which requires the service role key (never exposed to the client). The mobile `AuthProvider.signUp()` calls this endpoint.
+</Note>
+
+## Database
+
+| Table | Operation | Details |
+|-------|-----------|---------|
+| `auth.users` | INSERT | Created by Supabase Admin Auth. Stores email, encrypted_password, raw_user_meta_data (username, first_name, surname) |
+| `profiles` | INSERT | Created automatically by `handle_new_user` trigger |
+
+## Trigger: `on_auth_user_created`
+
+- **Fires:** `AFTER INSERT ON auth.users`
+- **Executes:** `handle_new_user()` (SECURITY DEFINER)
+- **Logic:** Inserts into `profiles` with `id = NEW.id`, extracts `username`, `first_name`, `surname` from `raw_user_meta_data`. Falls back to `'user_' || substr(NEW.id, 1, 8)` if username is missing.
+- **Defaults:** `location = ''`, `bio = ''`, all counters default to 0.
+
+## Username Availability Check
+
+`useUsernameCheck` hook (`src/hooks/useUsernameCheck.ts`):
+- Debounced (300ms) username availability checking
+- Calls `check_username_available` RPC with `p_username` and optional `p_exclude_user_id`
+- Returns availability status with visual feedback (green check / red X)
+- Used in both registration form and profile edit (settings) screen
+
+## Validation (`registerSchema`)
+
+| Field | Constraint |
+|-------|-----------|
+| `username` | Required, string |
+| `firstName` | Required, string |
+| `surname` | Required, string |
+| `email` | Required, valid email format |
+| `password` | Required, minimum length |
+
+## Loops.so Integration
+
+- On successful registration, the API route enrolls the user in Loops.so email marketing
+- `POST https://app.loops.so/api/v1/contacts/create` with email, firstName, source
+- On account deletion, `POST https://app.loops.so/api/v1/contacts/delete` removes them
+- Mobile app uses `EXPO_PUBLIC_LOOPS_API_KEY` env var
+
+<CardGroup cols={2}>
+  <Card title="Login" icon="right-to-bracket" href="/journeys/login">
+    Authentication and session management
+  </Card>
+  <Card title="Profile" icon="user" href="/journeys/profile">
+    Profile viewing and editing
+  </Card>
+</CardGroup>

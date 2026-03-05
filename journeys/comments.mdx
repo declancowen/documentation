@@ -1,0 +1,120 @@
+---
+title: Comments
+description: "Text comments on recipes and posts, with @mention support."
+---
+
+## What It Does
+
+Text comments on recipes and posts with @mention support. Mentioned users receive notifications. Comments can be swiped to delete.
+
+## User Flow
+
+<Steps>
+  <Step title="Open Comments">
+    Tap comment icon → `CommentModal` opens (bottom sheet).
+  </Step>
+  <Step title="Write Comment">
+    Type comment, can @mention users via `MentionInput` with `UserSearchPopup`.
+  </Step>
+  <Step title="Submit">
+    `POST /api/recipes/[id]/comments` or `POST /api/posts/[id]/comments`. Mentioned users get notifications.
+  </Step>
+  <Step title="Delete (Own Comments)">
+    Swipe-to-delete via `SwipeableCommentItem`.
+  </Step>
+</Steps>
+
+## Components
+
+| Component | Purpose |
+|-----------|---------|
+| `CommentModal` | Bottom sheet modal |
+| `CommentSection` | Inline comment list |
+| `SwipeableCommentItem` | Swipeable comment with delete action |
+| `MentionText` | Renders @mentions as tappable links |
+| `MentionInput` | Text input with @mention autocomplete |
+| `UserSearchPopup` | Dropdown for @mention user search |
+
+## Hooks
+
+`useComments` (`src/hooks/api/useComments.ts`), `useCommentModal`, `useMentionInput`
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly for comments — `supabase.rpc('create_recipe_comment')`, `supabase.rpc('get_comments')`, etc. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Cross-Screen Comment Count Sync
+
+When a comment is added via `useAddComment`, the comment count must update everywhere — not just the comment list, but also every feed card and detail view showing that content.
+
+### How It Works
+
+1. `onMutate`: Optimistic comment inserted into comment list cache with a temp ID (`temp-{timestamp}`)
+2. `onSuccess`:
+   - Temp comment replaced with real server response (real ID, server timestamp)
+   - Comment count incremented in ALL list view caches — walks every page of every infinite query matching `queryKeys.posts.all` or `queryKeys.recipes.all`
+   - Comment count incremented in detail view cache (`commentCount + 1`)
+3. `onError`: Rollback comment list to previous snapshot
+
+### Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/recipes/[id]/comments` | Create recipe comment |
+| `GET` | `/api/recipes/[id]/comments` | List recipe comments |
+| `DELETE` | `/api/recipes/[id]/comments/[commentId]` | Delete recipe comment |
+| `POST` | `/api/posts/[id]/comments` | Create post comment |
+| `GET` | `/api/posts/[id]/comments` | List post comments |
+| `DELETE` | `/api/posts/[id]/comments/[commentId]` | Delete post comment |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `create_recipe_comment` | `p_recipe_id`, `p_user_id`, `p_content` | TABLE(out_comment_id, out_content, out_created_at, out_user_id, out_username, out_avatar_url) |
+| `create_post_comment` | `p_post_id`, `p_user_id`, `p_content` | TABLE(out_comment_id, out_content, out_created_at, out_user_id, out_username, out_avatar_url) |
+| `get_comments` | `p_content_type` ('recipe'/'post'), `p_content_id`, `p_limit` (20), `p_offset` (0) | TABLE(id, content, created_at, user_id, username, avatar_url, total_count) |
+| `delete_recipe_comment` | `p_comment_id`, `p_user_id` | boolean |
+| `delete_post_comment` | `p_comment_id`, `p_user_id` | boolean |
+
+## Mention Flow
+
+1. API route extracts @mentions from comment content (using `mentions.ts` utility)
+2. Validates mentioned usernames exist
+3. Inserts comment via RPC
+4. Inserts mention records into `*_comment_mentions` table
+5. Trigger fires → creates notification (type: `mention_recipe_comment` or `mention_post_comment`)
+
+## Database
+
+| Table | Key Columns |
+|-------|------------|
+| `recipe_comments` | `id`, `recipe_id` (FK→recipes), `user_id` (FK→profiles), `content`, `created_at` |
+| `post_comments` | `id`, `post_id` (FK→posts), `user_id` (FK→profiles), `content`, `created_at` |
+| `recipe_comment_mentions` | `comment_id` (FK→recipe_comments), `mentioned_user_id` (FK→profiles) — Composite PK |
+| `post_comment_mentions` | `comment_id` (FK→post_comments), `mentioned_user_id` (FK→profiles) — Composite PK |
+
+## RLS Policies
+
+- **Comments:** SELECT filtered by parent not deleted, INSERT `auth.uid() = user_id`, DELETE `auth.uid() = user_id`
+- **Mentions:** SELECT public, INSERT/DELETE by comment author (via JOIN to comments table)
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_recipe_comment_count` | `recipe_comments` | INSERT, DELETE | `update_recipe_comment_count()` |
+| `trigger_update_post_comment_count` | `post_comments` | INSERT, DELETE | `update_post_comment_count()` |
+| `trigger_recipe_comment_mention_notification` | `recipe_comment_mentions` | INSERT | `create_recipe_comment_mention_notification()` |
+| `trigger_post_comment_mention_notification` | `post_comment_mentions` | INSERT | `create_post_comment_mention_notification()` |
+
+<CardGroup cols={2}>
+  <Card title="Notifications" icon="bell" href="/journeys/notifications">
+    Mention notifications
+  </Card>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Recipe comments
+  </Card>
+</CardGroup>

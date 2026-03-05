@@ -1,0 +1,64 @@
+---
+title: Search
+description: "Global search across recipes, posts, collections, and users using PostgreSQL trigram matching."
+---
+
+## What It Does
+
+Global search across all content types using PostgreSQL's `pg_trgm` extension for fuzzy trigram matching.
+
+## User Flow
+
+<Steps>
+  <Step title="Open Search">
+    Tap Search tab → `app/(tabs)/search.tsx`
+  </Step>
+  <Step title="Type Query">
+    Debounced search (via `useDebounce`) → `GET /api/search`
+  </Step>
+  <Step title="View Results">
+    Results grouped by type (recipes, posts, collections, users). Optional type filter to narrow results.
+  </Step>
+</Steps>
+
+## Components
+
+`CreatorCard` (user results), `ContentCard` (recipe/post results)
+
+## Context
+
+`SearchProvider` (`src/context/SearchContext.tsx`) — manages search query state, results, filters.
+
+## Hooks
+
+- `useSearch` (`src/hooks/useSearch.ts`) — search logic
+- `useDebounce` (`src/hooks/useDebounce.ts`) — debounces search input
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly — `supabase.rpc('global_search')`. The web API route exists for the web client (Phase 2).
+</Note>
+
+## Web API Route (Phase 2)
+
+**`GET /api/search`**
+- Query params: `q` (search term), `type` (optional filter: 'recipe', 'post', 'collection', 'user')
+- Calls `global_search` RPC
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `global_search` | `p_query` (text), `p_type_filter` (optional), `p_limit` (30) | JSON — results across all content types |
+| `check_username_available` | `p_username` (text), `p_exclude_user_id` (optional) | boolean — used for registration and profile edit |
+
+## Database Extension
+
+`pg_trgm` (installed in `public` schema) — provides trigram-based similarity matching for fuzzy search. Used by `global_search` RPC for `%` LIKE matching and similarity scoring.
+
+<CardGroup cols={2}>
+  <Card title="Registration" icon="user-plus" href="/journeys/registration">
+    Username availability check uses same RPC
+  </Card>
+</CardGroup>

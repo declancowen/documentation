@@ -1,0 +1,98 @@
+---
+title: Collections
+description: "User-curated folders for organizing saved content. Can be public or private."
+---
+
+## What It Does
+
+Collections are user-curated folders for organizing saved recipes and posts. They can be public (visible to everyone) or private (owner-only).
+
+## User Flow — Create
+
+Navigate to `app/collection/new.tsx` → fill in name, description, public/private toggle (via `ToggleSwitch`) → `POST /api/collections`.
+
+## User Flow — View
+
+Tap collection → `app/collection/[id].tsx` → `CollectionDetailView` renders collection info + grid of saved items.
+
+## User Flow — Edit
+
+Owner taps edit → `app/collection/[id]/edit.tsx` → pre-populated form → can modify name, description, public/private toggle → `PUT /api/collections/[id]`.
+
+## Screens & Components
+
+| Screen/Component | Purpose |
+|-----------------|---------|
+| `app/collection/new.tsx` | Collection creation |
+| `app/collection/[id].tsx` | Collection detail |
+| `app/collection/[id]/edit.tsx` | Collection edit flow |
+| `CollectionDetailView` | Detail view with item grid |
+| `CollectionForm` | Create/edit form |
+
+## Hooks
+
+`useCollections` (`src/hooks/api/useCollections.ts`)
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly — `supabase.rpc('get_collection_detail')`, `supabase.rpc('get_collections_list')`, etc. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/collections` | Create collection |
+| `GET` | `/api/collections/[id]` | Get detail (calls `get_collection_detail` RPC) |
+| `PUT` | `/api/collections/[id]` | Update collection |
+| `DELETE` | `/api/collections/[id]` | Delete collection |
+| `GET` | `/api/collections/list` | List collections (calls `get_collections_list` RPC) |
+| `POST/DELETE` | `/api/collections/[id]/items` | Add/remove items |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `get_collection_detail` | `p_collection_id`, `p_current_user_id`, `p_item_limit` (20), `p_item_offset` (0) | JSON — collection with items, pagination |
+| `get_collections_list` | `p_limit`, `p_offset`, `p_current_user_id` | JSON — paginated collection list |
+| `get_user_collections_for_save_modal` | `p_user_id`, `p_saved_item_id` (optional) | TABLE(id, name, is_public, preview_image_url, item_count, is_in_collection) — used by SaveModal |
+
+## Database Tables
+
+| Table | Key Columns | Notes |
+|-------|------------|-------|
+| `collections` | `id`, `user_id` (FK→profiles), `name`, `description`, `cover_recipe_id` (text, nullable — loose reference, no FK), `is_public` (default false), `is_deleted` (default false), `item_count` (denormalized, default 0) | `is_public` controls visibility |
+| `collection_saved_items` | `collection_id` (FK→collections), `saved_item_id` (FK→saved_items), `added_at` | Composite PK. Junction table. |
+
+<Note>
+`collections.cover_recipe_id` is typed as `text` (not uuid) and has no foreign key constraint — it's a loose reference.
+</Note>
+
+## RLS Policies
+
+**collections:**
+- **SELECT:** `(is_deleted = false) OR (auth.uid() = user_id)`
+- **INSERT/UPDATE/DELETE:** `auth.uid() = user_id`
+
+**collection_saved_items:**
+- **SELECT:** `true` (public)
+- **INSERT:** Must own both the collection AND the saved_item (double ownership check)
+- **DELETE:** Must own the collection
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_profile_collection_count` | `collections` | INSERT, UPDATE, DELETE | `update_profile_collection_count()` |
+| `trigger_update_collection_item_count` | `collection_saved_items` | INSERT, DELETE | `update_collection_item_count()` |
+| `update_collections_updated_at` | `collections` | UPDATE | `update_updated_at_column()` |
+
+<CardGroup cols={2}>
+  <Card title="Saved Items" icon="bookmark" href="/journeys/saved-items">
+    Bookmark system that feeds collections
+  </Card>
+  <Card title="Profile" icon="user" href="/journeys/profile">
+    Collections appear on user profiles
+  </Card>
+</CardGroup>

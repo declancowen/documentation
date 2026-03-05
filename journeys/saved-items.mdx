@@ -1,0 +1,112 @@
+---
+title: Saved Items
+description: "Bookmark system — save recipes, posts, or collections, then organize into collections."
+---
+
+## What It Does
+
+Bookmark system. Users save recipes, posts, or collections, then optionally organize them into user-created collections.
+
+## User Flow
+
+<Steps>
+  <Step title="Save Content">
+    Tap bookmark icon on any content → `SaveContext.openSaveModalWithAutoSave()` → item is immediately saved (creates `saved_item`).
+  </Step>
+  <Step title="Organize (Optional)">
+    `SaveModal` appears showing user's collections with checkboxes → toggle collection membership → adds/removes `collection_saved_items`.
+  </Step>
+  <Step title="Browse Saved">
+    Access via Saved tab (`app/(tabs)/saved.tsx`) and `app/saved-items.tsx`.
+  </Step>
+</Steps>
+
+## Screens
+
+| Screen | Purpose |
+|--------|---------|
+| `app/(tabs)/saved.tsx` | Saved tab — shows collections + uncategorized items |
+| `app/saved-items.tsx` | Full saved items list |
+| `app/save.tsx` | Save modal (transparent modal presentation) |
+
+## Components
+
+| Component | Purpose |
+|-----------|---------|
+| `SaveModal` | Collection picker modal, always mounted in root layout (rendered outside Stack navigator, controlled by `SaveProvider`) |
+| `SaveButton` | Bookmark icon button |
+
+## Context
+
+`SaveProvider` (`src/context/SaveContext.tsx`) — manages save modal state, auto-save behavior.
+
+## Hooks
+
+`useSaveStatus` (`src/hooks/api/useSaveStatus.ts`), `useCollections`
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly for save operations — `supabase.from('saved_items').insert/delete`, `supabase.from('collection_saved_items').insert/delete`. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Optimistic Updates & Cross-Screen Sync
+
+### `useToggleStandalone` (Save/Unsave)
+
+1. `onMutate`: Optimistically toggle `isStandaloneSaved` and `savedItemId` in the save status cache
+2. `mutationFn`: Check current status → insert or delete from `saved_items`
+3. `onError`: Rollback to previous snapshot
+4. `onSettled`: Narrow invalidation — only the specific item's status + saved items list (not all queries)
+
+### `useToggleCollectionMembership` (Add/Remove from Collection)
+
+1. `onMutate`: Optimistically add/remove collection from the item's collection list
+2. `mutationFn`: Insert or delete from `collection_saved_items`
+3. `onError`: Rollback to previous snapshot
+4. `onSettled`: Invalidate specific item status + specific collection detail
+
+### `useSavedItemIds` (Bulk Status for List Views)
+
+For feed views that need to show bookmark state on every card, `useSavedItemIds` fetches all saved item IDs in one query and returns a `Set<string>` of `"contentType:contentId"` strings for O(1) lookup. Cached for 1 minute.
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `GET` | `/api/saved-items` | List user's saved items |
+| `POST` | `/api/saved-items` | Save an item |
+| `DELETE` | `/api/saved-items/[id]` | Unsave an item (cascades: removes from all collections) |
+| `GET` | `/api/saved-items/status` | Check save status for content |
+| `POST` | `/api/saved-items/toggle-standalone` | Toggle standalone save without collection |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `get_saved_page_data` | `p_user_id` | JSON — collections with preview images + uncategorized count |
+| `get_uncategorized_saved_items` | `p_user_id`, `p_limit` (12), `p_offset` (0) | JSON — saved items not in any collection |
+| `get_user_collections_for_save_modal` | `p_user_id`, `p_saved_item_id` (optional) | TABLE — collections with `is_in_collection` flag for current item |
+
+## Database
+
+| Table | Key Columns | Notes |
+|-------|------------|-------|
+| `saved_items` | `id` (uuid PK), `user_id` (FK→profiles), `content_type` (CHECK: 'post', 'recipe', 'collection'), `content_id` (uuid), `created_at` | Polymorphic: `content_type` + `content_id` point to any content |
+| `collection_saved_items` | `collection_id` (FK→collections), `saved_item_id` (FK→saved_items), `added_at` | Composite PK |
+
+## RLS Policies
+
+**saved_items:**
+- **SELECT:** `user_id = auth.uid()` (private — only owner sees their saves)
+- **INSERT:** `user_id = auth.uid()`
+- **DELETE:** `user_id = auth.uid()`
+
+<CardGroup cols={2}>
+  <Card title="Collections" icon="folder" href="/journeys/collections">
+    Organize saved items into collections
+  </Card>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Save recipes
+  </Card>
+</CardGroup>

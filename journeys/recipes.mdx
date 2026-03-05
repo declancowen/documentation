@@ -1,0 +1,304 @@
+---
+title: Recipes
+description: "Create, view, edit, and delete Fujifilm film simulation recipes — the core content type."
+---
+
+## What It Does
+
+Recipes are the atomic unit of Recipe Room — a complete set of Fujifilm camera settings with sample images, tags, and optional Lightroom adjustments. Users create, view, edit, and soft-delete recipes.
+
+## User Flow — Create
+
+<Steps>
+  <Step title="Open Create Modal">
+    Tap "+" → modal `app/create.tsx` → select "Recipe" → `app/recipe/new.tsx`
+  </Step>
+  <Step title="Step 1: Images">
+    Pick up to 10 images via `ImagePickerStep` (full-screen picker with album selection, multi-select). Reorder with `DraggableImageList`.
+  </Step>
+  <Step title="Step 2: Metadata">
+    Title, description, camera model (`CameraModelPicker` — 22 supported models), film simulation (`FilmSimulationPicker`).
+  </Step>
+  <Step title="Step 3: Fujifilm Settings">
+    `FujifilmSettings` component with `SliderControl` for all parameters (dynamic range, grain, white balance, tone curve, color, sharpness, noise reduction, clarity).
+  </Step>
+  <Step title="Step 4: Lightroom (Optional)">
+    `LightroomSettings` component, toggled via `ToggleSwitch`.
+  </Step>
+  <Step title="Step 5: Tags & Links">
+    Tags (`TagInput` with suggestions), tagged users (`UserTagSelector`), optional collection assignment (`ContentSelector`).
+  </Step>
+  <Step title="Submit">
+    Images uploaded first → then `POST /api/recipes` with all data.
+  </Step>
+</Steps>
+
+## User Flow — View
+
+Tap recipe card anywhere → `app/recipe/[id].tsx` → `RecipeDetailView` renders:
+- `PhotoCarousel` for sample images
+- `DetailHeader` with author info and follow button
+- `RecipeSettings` showing all Fujifilm parameters
+- `DetailActionBar` with favorite, repost, save, comment, share actions
+- `CommentSection` / `CommentModal` for comments
+- `LinkedContentCard` if recipe is linked to a post
+
+## User Flow — Edit
+
+Owner taps edit → `app/recipe/[id]/edit.tsx` → pre-populated form (fetched via `useRecipe(id)`) → can modify all fields including images → `PUT /api/recipes/[id]` (calls `update_recipe` RPC). Uses `KeyboardAvoidingView` with platform-specific behavior.
+
+## Screens & Components
+
+| Screen/Component | Purpose |
+|-----------------|---------|
+| `app/recipe/new.tsx` | Recipe creation flow |
+| `app/recipe/[id].tsx` | Recipe detail view |
+| `app/recipe/[id]/edit.tsx` | Recipe edit flow |
+| `RecipeDetailView` | Main detail view component |
+| `FujifilmSettings` | Camera settings form/display |
+| `LightroomSettings` | Optional Lightroom adjustments |
+| `RecipeSettings` | Read-only settings display |
+| `PhotoCarousel` | Image carousel with pagination dots |
+| `DetailActionBar` | Favorite/repost/save/comment/share bar |
+| `DetailHeader` | Author info + follow button |
+| `CommentModal` | Bottom sheet comment modal |
+| `ContentCard` | Recipe card in feeds/grids |
+| `ImagePickerStep` | Full-screen image picker (Step 1) |
+| `DraggableImageList` | Reorderable image list |
+| `FilmSimulationPicker` | Film sim selector |
+| `CameraModelPicker` | Camera model selector |
+| `TagInput` | Tag entry with suggestions |
+| `UserTagSelector` | @mention user tagging |
+| `SliderControl` | Numeric slider for settings |
+| `ToggleSwitch` | Themed toggle with haptic feedback |
+| `ContentSelector` | Picker for linking recipe/collection |
+| `TextInputWithDone` | TextInput wrapper with iOS "Done" button |
+
+## Hooks & State
+
+| Hook | Purpose |
+|------|---------|
+| `useRecipes` | React Query hook for recipe list/CRUD (infinite query, mutations) |
+| `useComments` | Comment fetching/creation |
+| `useImageUpload` | Image upload with compression |
+| `useImageDimensions` | Image dimension calculation |
+| `useCommentModal` | Comment modal state |
+| `useHaptics` | Haptic feedback on actions |
+| `useSaveStatus` | Save/bookmark status |
+| `useAuth` | Auth state for ownership checks |
+| `useAuthOverlay` | Auth-gated action handling |
+| `useToast` | Toast notifications for success/error feedback |
+| `useTheme` | Theme colors for styled components |
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly via `supabase.rpc()` and `supabase.from()` — it does NOT route through the Next.js API routes in `apps/web`. The web API routes exist for the web client (Phase 2). The mobile hooks in `src/hooks/api/` are the source of truth for how data flows.
+</Note>
+
+### Mobile (Direct Supabase)
+
+| Hook | Supabase Call | Purpose |
+|------|--------------|---------|
+| `useCreateRecipe` | `supabase.rpc('create_recipe', {...})` | Atomic recipe creation |
+| `useRecipe(id)` | `supabase.rpc('get_recipe_detail', {...})` | Fetch recipe detail |
+| `useUpdateRecipe(id)` | `supabase.rpc('update_recipe', {...})` | Update recipe |
+| `useDeleteRecipe` | `supabase.rpc('delete_recipe', {...})` | Soft delete |
+| `useDiscoverContent` | `supabase.rpc('get_discover_content_list', {...})` | Feed listing |
+| `useToggleFavorite` | `supabase.from('recipe_favorites').insert/delete` | Favorite toggle |
+| `useToggleRepost` | `supabase.from('recipe_reposts').insert/delete` | Repost toggle |
+
+### Web API Routes (Phase 2 — used by web client)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/recipes` | Create recipe (calls `create_recipe` RPC) |
+| `GET` | `/api/recipes/[id]` | Get recipe detail (calls `get_recipe_detail` RPC) |
+| `PUT` | `/api/recipes/[id]` | Update recipe (calls `update_recipe` RPC) |
+| `DELETE` | `/api/recipes/[id]` | Soft delete recipe (calls `delete_recipe` RPC) |
+| `GET` | `/api/recipes/list` | List recipes with filters |
+| `GET` | `/api/recipes/featured` | Featured/trending recipes |
+| `POST` | `/api/upload/image` | Upload recipe images to storage |
+
+## Optimistic Updates & Cross-Screen Sync
+
+When a user favorites, reposts, or comments on a recipe, the change must appear instantly across every screen — detail views, feed cards, profile grids — without a full refetch.
+
+### How `useToggleFavorite` Works
+
+```
+User taps heart
+  ├─ onMutate (before API call):
+  │   ├─ Cancel all outgoing refetches for this recipe
+  │   ├─ Snapshot previous state (for rollback)
+  │   ├─ Update detail view cache: toggle isFavorited, ±1 favoriteCount
+  │   ├─ Update ALL recipe list caches: walk every page of every infinite query
+  │   └─ Update ALL post list caches: walk mixed content feeds too
+  ├─ mutationFn: supabase.from('recipe_favorites').insert/delete
+  ├─ onError: rollback all caches to snapshots
+  └─ onSettled: NO invalidation (optimistic update is sufficient)
+```
+
+The key insight: `onSettled` deliberately does NOT call `invalidateQueries`. Invalidating would cause the masonry grid to re-render and items to jump/disappear. The optimistic cache update is the final state — data will naturally refresh on next mount/focus.
+
+### Cache Keys Affected
+
+| Action | Caches Updated |
+|--------|---------------|
+| Favorite recipe | `recipes.detail(id)`, ALL `recipes.all` queries, ALL `posts.all` queries (mixed feeds) |
+| Favorite post | `posts.detail(id)`, ALL `posts.all` queries |
+| Add comment | Comment list cache, `recipes.detail(id)` or `posts.detail(id)` comment count, ALL list caches comment count |
+| Save item | `saved.status(type, id)`, `saved.items()` |
+| Toggle collection | `saved.status(type, id)`, `collections.detail(collectionId)` |
+| Follow user | `users.profile`, `users.followers` |
+| Create/delete content | `recipes.all`, `collections.all`, `saved.all` |
+
+### Comment Count Propagation
+
+When a comment is added via `useAddComment`:
+1. Optimistic comment inserted into comment list cache (with temp ID)
+2. On success: temp comment replaced with real server response
+3. Comment count incremented in ALL list view caches (walks every page of every infinite query)
+4. Comment count incremented in detail view cache
+
+### Save Status Propagation
+
+`useSaveStatus` manages bookmark state per-item:
+- Optimistic toggle on `useToggleStandalone` (save/unsave)
+- Optimistic toggle on `useToggleCollectionMembership` (add/remove from collection)
+- On settle: narrow invalidation of specific item status + saved items list (not all queries)
+
+## RPC Functions
+
+<AccordionGroup>
+  <Accordion title="create_recipe">
+    **Parameters:** `p_user_id`, `p_title`, `p_description`, `p_camera_model`, `p_images[]`, `p_cover_index`, `p_tags[]`, `p_tagged_user_ids[]`, `p_collection_id`, + all Fujifilm settings + optional Lightroom settings (`p_include_lightroom`, `p_lr_exposure`, `p_lr_contrast`, etc.)
+
+    **Returns:** `TABLE(id, title, description, camera_model, cover_image_url, film_simulation, created_at, user_id, collection_id)`
+
+    Atomic creation: inserts recipe + recipe_images + recipe_tags + recipe_tagged_users + lightroom_settings (if included) + collection assignment (if provided). All in one transaction.
+  </Accordion>
+  <Accordion title="update_recipe">
+    Same parameters as create but all optional (NULL = no change).
+
+    **Returns:** `TABLE(id, title, description, camera_model, cover_image_url, film_simulation, updated_at, collection_id)`
+
+    Atomic update: replaces images, tags, tagged users, lightroom settings as needed.
+  </Accordion>
+  <Accordion title="delete_recipe">
+    **Parameters:** `p_recipe_id`, `p_user_id`
+
+    **Returns:** `TABLE(id, image_urls[], deleted_at)`
+
+    Soft delete: sets `is_deleted = true`. Returns image URLs for storage cleanup.
+  </Accordion>
+  <Accordion title="get_recipe_detail">
+    **Parameters:** `p_recipe_id`, `p_current_user_id` (optional)
+
+    **Returns:** JSON — full recipe with author profile, images, tags, tagged users, lightroom settings, engagement counts, and current user's favorite/repost/save status.
+  </Accordion>
+</AccordionGroup>
+
+## Fujifilm Camera Models
+
+22 supported models (from shared constants): X-T5, X-T4, X-T3, X-T2, X-T30 II, X-T30, X-T20, X-Pro3, X-Pro2, X-E4, X-E3, X-S20, X-S10, X-H2S, X-H2, X-H1, X100V, X100F, X100VI, GFX 100S, GFX 100 II, GFX 50S II, Other.
+
+## Database Tables
+
+<AccordionGroup>
+  <Accordion title="recipes">
+    | Column | Type | Constraints |
+    |--------|------|-------------|
+    | `id` | uuid PK | |
+    | `user_id` | FK→profiles | |
+    | `title` | text | |
+    | `description` | text | |
+    | `camera_model` | text | |
+    | `cover_image_url` | text | |
+    | `film_simulation` | text | CHECK: Provia, Velvia, Astia, Classic Chrome, Pro Neg Hi, Pro Neg Std, Classic Neg, Eterna, Eterna Bleach Bypass, Acros, Acros+Ye/R/G, Monochrome, Monochrome+Ye/R/G, Sepia, Nostalgic Neg, Reala Ace |
+    | `dynamic_range` | text | CHECK: DR100, DR200, DR400, Auto |
+    | `grain_effect` | text | CHECK: Off, Weak Small, Weak Large, Strong Small, Strong Large |
+    | `color_chrome_effect` | text | CHECK: Off, Weak, Strong |
+    | `color_chrome_effect_blue` | text | CHECK: Off, Weak, Strong |
+    | `white_balance_mode` | text | CHECK: Auto, Daylight, Shade, Fluorescent 1/2/3, Incandescent, Underwater, Kelvin |
+    | `white_balance_kelvin` | int | 2500–10000 |
+    | `white_balance_red` | int | -9 to 9 |
+    | `white_balance_blue` | int | -9 to 9 |
+    | `highlight` | int | -2 to 4 |
+    | `shadow` | int | -2 to 4 |
+    | `color` | int | -4 to 4 |
+    | `sharpness` | int | -4 to 4 |
+    | `noise_reduction` | int | -4 to 4 |
+    | `clarity` | int | -5 to 5 |
+    | `iso_setting` | text | |
+    | `exposure_compensation` | text | |
+    | `is_deleted` | bool | default false |
+    | `comment_count` | int | denormalized |
+    | `favorite_count` | int | denormalized |
+    | `repost_count` | int | denormalized |
+  </Accordion>
+  <Accordion title="recipe_images">
+    `id` (uuid PK), `recipe_id` (FK→recipes), `image_url`, `is_cover` (bool), `display_order` (int). Multiple images per recipe, ordered.
+  </Accordion>
+  <Accordion title="recipe_tags">
+    `id` (uuid PK), `recipe_id` (FK→recipes), `tag` (text). Free-text tags.
+  </Accordion>
+  <Accordion title="recipe_tagged_users">
+    `recipe_id` (FK→recipes), `tagged_user_id` (FK→profiles). Composite PK.
+  </Accordion>
+  <Accordion title="lightroom_settings">
+    One-to-one with recipe (`recipe_id` UNIQUE FK). Fields: `exposure` (-5.0 to 5.0), `contrast` (-100 to 100), `highlights`, `shadows`, `whites`, `blacks`, `temperature`, `tint`, `vibrance`, `saturation`, `clarity`, `dehaze`, `texture` (all -100 to 100), `sharpening` (0 to 150), `noise_reduction` (0 to 100). All have CHECK constraints.
+  </Accordion>
+</AccordionGroup>
+
+## Validation Constraints (Zod)
+
+| Field | Constraint |
+|-------|-----------|
+| Recipe title | 1–100 characters |
+| Recipe description | 0–2000 characters |
+| Tags | Max 10 per recipe, each 1–30 characters |
+| Tagged users | Max 10 per recipe |
+| Images | 1–10 per recipe, JPEG/PNG/WebP only |
+
+## RLS Policies
+
+- **SELECT:** `(is_deleted = false) OR (auth.uid() = user_id)` — everyone sees non-deleted; owners see their own deleted
+- **INSERT:** `auth.uid() = user_id`
+- **UPDATE:** `auth.uid() = user_id`
+- **DELETE:** `auth.uid() = user_id`
+
+Recipe images and tags: SELECT public, INSERT/UPDATE/DELETE owner check via JOIN to recipes.
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_profile_recipe_count` | `recipes` | INSERT, UPDATE, DELETE | `update_profile_recipe_count()` |
+| `trigger_recipe_tag_notification` | `recipe_tagged_users` | INSERT | `create_recipe_tag_notification()` |
+| `trigger_delete_recipe_tag_notification` | `recipe_tagged_users` | DELETE | `delete_recipe_tag_notification()` |
+| `trigger_delete_saved_items_on_recipe_delete` | `recipes` | DELETE | `delete_saved_items_on_recipe_delete()` |
+| `trigger_delete_saved_items_on_recipe_soft_delete` | `recipes` | UPDATE | `delete_saved_items_on_recipe_delete()` |
+| `update_recipes_updated_at` | `recipes` | UPDATE | `update_updated_at_column()` |
+| `update_lightroom_settings_updated_at` | `lightroom_settings` | UPDATE | `update_updated_at_column()` |
+
+## Storage
+
+- **Bucket:** `recipe-images` (public: true, no file_size_limit or MIME restrictions at bucket level — validation in API route)
+- **Path pattern:** `{user_id}/{filename}`
+- **Policies:** Public read, authenticated upload, owner-only update/delete (via `storage.foldername(name)[1] = auth.uid()`)
+
+<CardGroup cols={2}>
+  <Card title="Posts" icon="image" href="/journeys/posts">
+    Posts can link to recipes
+  </Card>
+  <Card title="Collections" icon="folder" href="/journeys/collections">
+    Organize recipes into collections
+  </Card>
+  <Card title="Favorites" icon="heart" href="/journeys/favorites">
+    Favorite/unfavorite recipes
+  </Card>
+  <Card title="Image Upload" icon="upload" href="/journeys/image-upload">
+    Image processing pipeline
+  </Card>
+</CardGroup>

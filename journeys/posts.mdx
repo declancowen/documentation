@@ -1,0 +1,185 @@
+---
+title: Posts
+description: "Create, view, edit, and delete photo posts — a lighter content type than recipes."
+---
+
+## What It Does
+
+Posts are a lighter content type than recipes — a photo post with images, caption, tags, camera metadata, and an optional linked recipe. Think "here's what I shot today."
+
+## User Flow — Create
+
+<Steps>
+  <Step title="Open Create Modal">
+    Tap "+" → modal `app/create.tsx` → select "Post" → `app/post/new.tsx`
+  </Step>
+  <Step title="Fill Form">
+    Images (via `ImagePickerStep`), title, caption, camera model, film simulation, tags, optional recipe link (via `ContentSelector`), optional collection assignment.
+  </Step>
+  <Step title="Submit">
+    Images uploaded → `POST /api/posts`
+  </Step>
+</Steps>
+
+## User Flow — View
+
+Tap post card → `app/post/[id].tsx` → `PostDetailView` renders images, caption, metadata, action bar, comments.
+
+## User Flow — Edit
+
+Owner taps edit → `app/post/[id]/edit.tsx` → pre-populated form (fetched via `usePost(id)`).
+
+<Warning>
+Post images are immutable — `postUpdateSchema` explicitly excludes image fields. Only metadata can be updated: title, caption, tags, camera model, film simulation, recipe link, collection.
+</Warning>
+
+Submit → `PUT /api/posts/[id]` (calls `update_post` RPC).
+
+## Screens & Components
+
+| Screen/Component | Purpose |
+|-----------------|---------|
+| `app/post/new.tsx` | Post creation |
+| `app/post/[id].tsx` | Post detail |
+| `app/post/[id]/edit.tsx` | Post edit flow |
+| `PostDetailView` | Detail view component |
+| `FeedPostCard` | Post card in feeds |
+| `ContentCard` | Generic content card |
+
+## Hooks
+
+`usePosts` (`src/hooks/api/usePosts.ts`), `useComments`, `useImageUpload`, `useSaveStatus`
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly — it does NOT route through the Next.js API routes. The hooks use `supabase.rpc()` and `supabase.from()` directly.
+</Note>
+
+### Mobile (Direct Supabase)
+
+| Hook | Supabase Call | Purpose |
+|------|--------------|---------|
+| `useCreatePost` | `supabase.rpc('create_post', {...})` | Atomic post creation |
+| `usePost(id)` | `supabase.rpc('get_post_detail', {...})` | Fetch post detail |
+| `useUpdatePost(id)` | `supabase.rpc('update_post', {...})` | Update post |
+| `useDeletePost` | `supabase.rpc('delete_post', {...})` | Soft delete |
+| `usePosts` | `supabase.rpc('get_follow_content_list', {...})` | Following feed |
+| `useTogglePostLike` | `supabase.from('post_favorites').insert/delete` | Like toggle |
+
+### Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/posts` | Create post (calls `create_post` RPC) |
+| `GET` | `/api/posts/[id]` | Get post detail (calls `get_post_detail` RPC) |
+| `PUT` | `/api/posts/[id]` | Update post (calls `update_post` RPC) |
+| `DELETE` | `/api/posts/[id]` | Soft delete (calls `delete_post` RPC) |
+| `GET` | `/api/posts/list` | List posts with filters |
+| `GET` | `/api/posts/featured` | Featured/trending posts |
+
+## Optimistic Updates & Cross-Screen Sync
+
+`useTogglePostLike` follows the same pattern as recipe favorites:
+
+1. `onMutate`: Cancel outgoing refetches → snapshot previous state → optimistically update detail view AND all list caches (walks every page of every infinite query for mixed content feeds)
+2. `mutationFn`: Direct Supabase insert/delete on `post_favorites`
+3. `onError`: Rollback all caches to snapshots
+4. `onSettled`: NO invalidation — optimistic update is the final state
+
+Comment counts also propagate across all list views when a comment is added (see [Common Components](/journeys/common-components) for the full cache sync pattern).
+
+## RPC Functions
+
+<AccordionGroup>
+  <Accordion title="create_post">
+    **Parameters:** `p_user_id`, `p_title`, `p_caption`, `p_camera_model`, `p_film_simulation`, `p_images[]`, `p_cover_index`, `p_tags[]`, `p_recipe_id`, `p_collection_id`
+
+    **Returns:** `TABLE(id, title, caption, camera_model, film_simulation, cover_image_url, cover_index, created_at, user_id, recipe_id, collection_id)`
+  </Accordion>
+  <Accordion title="update_post">
+    **Parameters:** `p_post_id`, `p_user_id`, `p_title`, `p_caption`, `p_camera_model`, `p_film_simulation`, `p_tags[]`, `p_recipe_id`, `p_collection_id`, `p_clear_recipe` (bool), `p_clear_collection` (bool)
+
+    **Returns:** `TABLE(id, title, caption, camera_model, film_simulation, recipe_id, collection_id, updated_at)`
+  </Accordion>
+  <Accordion title="delete_post">
+    **Parameters:** `p_post_id`, `p_user_id`
+
+    **Returns:** `TABLE(id, deleted_at)`
+  </Accordion>
+  <Accordion title="get_post_detail">
+    **Parameters:** `p_post_id`, `p_current_user_id` (optional)
+
+    **Returns:** JSON — full post with author, images, tags, tagged users, engagement, user status.
+  </Accordion>
+</AccordionGroup>
+
+### `update_post` Clear Flags
+
+The `update_post` RPC has two boolean parameters for explicitly unlinking content:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `p_clear_recipe` | false | When true, sets `recipe_id` to NULL. Passing NULL for `p_recipe_id` alone means "no change." |
+| `p_clear_collection` | false | When true, removes the post from its collection by deleting the `saved_items` row. |
+
+<Note>
+This was a bug fix (migration `20260221_fix_update_post_ambiguous_id.sql`) — previously, NULL couldn't distinguish between "no change" and "clear the link."
+</Note>
+
+## Validation Constraints
+
+| Field | Constraint |
+|-------|-----------|
+| Post title | 1–100 characters |
+| Post caption | 0–2000 characters |
+| Tags | Max 10 per post, each 1–30 characters |
+| Images | 1–10 per post, JPEG/PNG/WebP only |
+
+## Sort Option Differences
+
+| Content Type | Available Sorts |
+|-------------|----------------|
+| Recipes | recent, trending, popular |
+| Posts | recent, trending, following (no 'popular') |
+
+## Database Tables
+
+| Table | Key Columns | Notes |
+|-------|------------|-------|
+| `posts` | `id`, `user_id` (FK→profiles), `title`, `caption`, `camera_model`, `film_simulation`, `recipe_id` (FK→recipes, nullable), `cover_image_url`, `is_deleted`, `comment_count`, `favorite_count`, `repost_count` | Posts can optionally link to a recipe via `recipe_id` |
+| `post_images` | `id`, `post_id` (FK→posts), `image_url`, `is_cover`, `display_order` | Same pattern as recipe_images |
+| `post_tags` | `id`, `post_id` (FK→posts), `tag` | Same pattern as recipe_tags |
+| `post_tagged_users` | `post_id` (FK→posts), `tagged_user_id` (FK→profiles) | Composite PK |
+
+## RLS Policies
+
+- **SELECT:** `is_deleted = false`
+- **INSERT/UPDATE/DELETE:** `auth.uid() = user_id`
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_profile_post_count` | `posts` | INSERT, UPDATE, DELETE | `update_profile_post_count()` |
+| `trigger_post_tag_notification` | `post_tagged_users` | INSERT | `create_post_tag_notification()` |
+| `trigger_delete_post_tag_notification` | `post_tagged_users` | DELETE | `delete_post_tag_notification()` |
+| `trigger_delete_saved_items_on_post_delete` | `posts` | DELETE | `delete_saved_items_on_post_delete()` |
+| `trigger_delete_saved_items_on_post_soft_delete` | `posts` | UPDATE | `delete_saved_items_on_post_delete()` |
+| `posts_updated_at` | `posts` | UPDATE | `update_updated_at_column()` |
+
+## Storage
+
+Bucket: `post-images` (public: true). Same path/policy pattern as recipe-images.
+
+<CardGroup cols={2}>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Posts can link to recipes
+  </Card>
+  <Card title="Collections" icon="folder" href="/journeys/collections">
+    Organize posts into collections
+  </Card>
+  <Card title="Favorites" icon="heart" href="/journeys/favorites">
+    Favorite/unfavorite posts
+  </Card>
+</CardGroup>

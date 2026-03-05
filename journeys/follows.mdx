@@ -1,0 +1,87 @@
+---
+title: Follows
+description: "Follow/unfollow other users. Following feed shows content from followed users."
+---
+
+## What It Does
+
+Standard social follow system. Following a user adds their content to your Home (Following) feed.
+
+## User Flow
+
+User taps `FollowButton` on any profile card, detail header, or user list → optimistic UI update → API call.
+
+## Screens
+
+| Screen | Purpose |
+|--------|---------|
+| `app/followers/[username].tsx` | List of user's followers |
+| `app/following/[username].tsx` | List of users being followed |
+| `app/connections/[username].tsx` | Combined connections view |
+
+## Components
+
+`FollowButton` (`src/components/common/FollowButton.tsx`), `UserCard`, `ProfileCard`
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly — `supabase.from('follows').insert/delete` and `supabase.rpc('get_user_followers')`. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Hooks & Mutation Patterns
+
+`useUser` (`src/hooks/api/useUser.ts`) exposes three follow mutation hooks:
+
+| Hook | Behavior |
+|------|----------|
+| `useFollowUser()` | Optimistic update: increments follower/following counts, sets `is_following: true`, calls `supabase.from('follows').insert` |
+| `useUnfollowUser()` | Reverse of above, calls `supabase.from('follows').delete` |
+| `useToggleFollow()` | Convenience wrapper that calls follow or unfollow based on current state |
+
+All three invalidate `queryKeys.users.profile` and `queryKeys.users.followers` on success.
+
+`useFollowers(userId)` / `useFollowing(userId)` — Infinite query with `FOLLOWERS_PAGE_SIZE = 30`, calls `get_user_followers` / `get_user_following` RPC.
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/users/[id]/follow` | Follow a user |
+| `DELETE` | `/api/users/[id]/follow` | Unfollow a user |
+| `GET` | `/api/users/[id]/followers` | Get follower list |
+| `GET` | `/api/users/[id]/following` | Get following list |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `get_user_followers` | `p_user_id`, `p_current_user_id`, `p_limit` (50), `p_offset` (0) | JSON — paginated follower list with follow-back status |
+| `get_user_following` | `p_user_id`, `p_current_user_id`, `p_limit` (50), `p_offset` (0) | JSON — paginated following list |
+
+## Database
+
+| Table | Key Columns | Constraints |
+|-------|------------|-------------|
+| `follows` | `follower_id` (FK→profiles), `following_id` (FK→profiles), `created_at` | Composite PK. CHECK: `follower_id <> following_id` (prevents self-follow) |
+
+## RLS Policies
+
+- **SELECT:** `true` (public)
+- **INSERT:** `auth.uid() = follower_id`
+- **DELETE:** `auth.uid() = follower_id`
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_follow_counts` | `follows` | INSERT, DELETE | `update_follow_counts()` — updates both `profiles.follower_count` and `profiles.following_count` |
+
+<CardGroup cols={2}>
+  <Card title="Profile" icon="user" href="/journeys/profile">
+    Follower/following counts on profiles
+  </Card>
+  <Card title="Feeds" icon="rss" href="/journeys/feeds">
+    Following feed shows content from followed users
+  </Card>
+</CardGroup>

@@ -1,0 +1,85 @@
+---
+title: Notifications
+description: "In-app notifications for social interactions — tags, mentions, and more."
+---
+
+## What It Does
+
+In-app notification system for social interactions. All notifications are trigger-created (no application-level notification creation).
+
+## User Flow
+
+1. `NotificationBell` in header shows unread count badge
+2. Tap bell → `app/notifications.tsx`
+3. Notification list with actor info, content preview, timestamp
+4. Tap notification → navigates to relevant content
+5. Mark as read on view
+
+## Components
+
+`NotificationBell` (`src/components/common/NotificationBell.tsx`) — bell icon with unread count badge.
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase directly — `supabase.rpc('get_notifications')` and `supabase.from('notifications').update()`. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `GET` | `/api/notifications` | Get notifications (calls `get_notifications` RPC) |
+| `PATCH` | `/api/notifications/read` | Mark notifications as read |
+| `GET` | `/api/notifications/unread-count` | Get unread count for badge |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `get_notifications` | `p_user_id`, `p_limit` (20), `p_offset` (0) | JSON — notifications with actor profile info, content preview, pagination |
+
+## Database
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | |
+| `recipient_id` | FK→profiles | |
+| `actor_id` | FK→profiles | |
+| `type` | text | CHECK: tag_post, tag_recipe, tag_collection, mention_post_comment, mention_recipe_comment, mention_collection_comment |
+| `content_type` | text | CHECK: post, recipe, collection |
+| `content_id` | uuid | |
+| `comment_id` | uuid (nullable) | |
+| `is_read` | bool | default false |
+| `created_at` | timestamptz | |
+
+## Notification Types
+
+All notifications are created by database triggers:
+
+| Type | Created By | On Table | Event |
+|------|-----------|----------|-------|
+| `tag_recipe` | `create_recipe_tag_notification` | `recipe_tagged_users` | INSERT |
+| `tag_post` | `create_post_tag_notification` | `post_tagged_users` | INSERT |
+| `mention_recipe_comment` | `create_recipe_comment_mention_notification` | `recipe_comment_mentions` | INSERT |
+| `mention_post_comment` | `create_post_comment_mention_notification` | `post_comment_mentions` | INSERT |
+
+<Note>
+`tag_collection` and `mention_collection_comment` are defined in the CHECK constraint but no triggers currently create them — reserved for future collection tagging/commenting features.
+</Note>
+
+## RLS Policies
+
+- **SELECT:** `auth.uid() = recipient_id` (private)
+- **INSERT:** `auth.uid() = actor_id`
+- **UPDATE:** `auth.uid() = recipient_id` (for marking as read)
+- **DELETE:** `auth.uid() = recipient_id`
+
+<CardGroup cols={2}>
+  <Card title="Comments" icon="comment" href="/journeys/comments">
+    Mention notifications
+  </Card>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Tag notifications
+  </Card>
+</CardGroup>

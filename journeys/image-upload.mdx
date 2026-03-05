@@ -1,0 +1,85 @@
+---
+title: Image Upload
+description: "Client-side image processing and upload to Supabase Storage."
+---
+
+## What It Does
+
+Handles the full image pipeline: client-side resize/compress, upload to Supabase Storage, and URL return for use in recipes, posts, and profiles.
+
+## User Flow
+
+<Steps>
+  <Step title="Pick Images">
+    User picks images via `ImagePickerStep` component (uses expo-image-picker, full-screen with album selection).
+  </Step>
+  <Step title="Client-Side Processing">
+    Resize/compress via `imageOptimization.ts` utilities.
+  </Step>
+  <Step title="Upload">
+    `POST /api/upload/image` → validates type, MIME, size → uploads to Supabase Storage bucket.
+  </Step>
+  <Step title="URL Returned">
+    Returns public URL for use in recipe/post/profile.
+  </Step>
+</Steps>
+
+## API Route
+
+**`POST /api/upload/image`**
+- Validates `type` parameter: `avatar`, `recipe`, `post`, `coverPhoto`
+- Validates MIME type (JPEG, PNG, WebP only) and file size
+- Generates unique filename
+- Uploads to appropriate Supabase Storage bucket
+- Returns public URL
+
+## Storage Buckets
+
+| Bucket | Public | Purpose | Path Pattern |
+|--------|--------|---------|-------------|
+| `avatars` | true | User profile photos | `{user_id}/{filename}` |
+| `recipe-images` | true | Recipe sample photos | `{user_id}/{filename}` |
+| `post-images` | true | Post photos | `{user_id}/{filename}` |
+| `cover-photos` | true | Profile cover photos | `{user_id}/{filename}` |
+
+<Note>
+All 4 buckets are public with no `file_size_limit` or `allowed_mime_types` restrictions at the bucket level. Validation happens in the API route.
+</Note>
+
+## Storage RLS Policies
+
+- All buckets: Public SELECT (read)
+- All buckets: Authenticated INSERT (upload)
+- All buckets: Owner-only UPDATE and DELETE (via `storage.foldername(name)[1] = auth.uid()`)
+
+## Mobile Utilities
+
+| Utility | Purpose |
+|---------|---------|
+| `src/utils/imageOptimization.ts` | Client-side resize/compress before upload |
+| `src/utils/imagePreloading.ts` | Preload images for smooth UX |
+| `src/hooks/useImageUpload.ts` | Upload hook with progress tracking |
+| `src/hooks/useImageDimensions.ts` | Calculate display dimensions |
+
+## Mobile Components
+
+| Component | Purpose |
+|-----------|---------|
+| `ImagePickerStep` | Full-screen image picker step (album selection, multi-select, reorder) |
+| `ImagePicker` | Image selection UI |
+| `ProfileImagePicker` | Avatar/cover photo picker |
+| `DraggableImageList` | Reorderable image list |
+| `EditableImageCarousel` | Carousel with edit controls |
+| `ReadOnlyImageGallery` | Display-only gallery |
+
+<CardGroup cols={3}>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Recipe image upload
+  </Card>
+  <Card title="Posts" icon="image" href="/journeys/posts">
+    Post image upload
+  </Card>
+  <Card title="Profile" icon="user" href="/journeys/profile">
+    Avatar and cover photo
+  </Card>
+</CardGroup>

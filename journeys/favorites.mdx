@@ -1,0 +1,92 @@
+---
+title: Favorites
+description: "Like/unlike recipes and posts. Drives trending algorithms."
+---
+
+## What It Does
+
+Heart-based like/unlike system for recipes and posts. Favorite counts drive the trending sort algorithm.
+
+## User Flow
+
+1. User taps heart icon on any recipe/post card or detail view
+2. Optimistic UI update (heart fills immediately, count changes)
+3. Haptic feedback via `useHaptics`
+4. If unauthenticated → `AuthOverlayProvider` intercepts, shows login prompt
+5. Direct Supabase call: `supabase.from('recipe_favorites').insert/delete` or `supabase.from('post_favorites').insert/delete`
+6. On error → rolls back optimistic update across ALL cached screens
+
+## Components
+
+`DetailActionBar`, `ContentCard`, `FeedPostCard`, `HeartAnimation`
+
+## Hooks
+
+`useToggleFavorite` (recipe favorites), `useTogglePostLike` (post favorites), `useAuthOverlay`
+
+## Cross-Screen Cache Sync
+
+This is the most important pattern in the app. When a user favorites content, the change must appear instantly on every screen — the detail view, every feed card, every masonry grid item — without a full refetch.
+
+### How It Works
+
+Both `useToggleFavorite` and `useTogglePostLike` use React Query's `onMutate` to:
+
+1. Cancel all outgoing refetches (prevents overwriting the optimistic update)
+2. Snapshot previous state for every affected cache entry
+3. Walk every page of every infinite query and update the matching item:
+   - Detail view: toggle `isFavorited`, ±1 `favoriteCount`
+   - All recipe list queries (`queryKeys.recipes.all`)
+   - All post list queries (`queryKeys.posts.all`) — because mixed content feeds contain both types
+4. On error: rollback every cache entry to its snapshot
+5. On settle: deliberately NO `invalidateQueries` — the optimistic update IS the final state
+
+<Note>
+The `onSettled` callback intentionally skips query invalidation. Invalidating would cause the masonry grid FlatList to re-render, making items jump and disappear. The cache naturally refreshes on next mount/focus via `staleTime`.
+</Note>
+
+### Data Flow (Direct Supabase)
+
+The mobile app does NOT go through web API routes for favorites. The hooks call Supabase directly:
+
+```
+useToggleFavorite → supabase.from('recipe_favorites').insert/delete
+useTogglePostLike → supabase.from('post_favorites').insert/delete
+```
+
+### Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/recipes/[id]/favorite` | Favorite a recipe |
+| `DELETE` | `/api/recipes/[id]/favorite` | Unfavorite a recipe |
+| `POST` | `/api/posts/[id]/favorite` | Favorite a post |
+| `DELETE` | `/api/posts/[id]/favorite` | Unfavorite a post |
+
+## Database
+
+| Table | Key Columns | Notes |
+|-------|------------|-------|
+| `recipe_favorites` | `user_id` (FK→profiles), `recipe_id` (FK→recipes) | Composite PK. One favorite per user per recipe. |
+| `post_favorites` | `user_id` (FK→profiles), `post_id` (FK→posts) | Composite PK. One favorite per user per post. |
+
+## RLS Policies
+
+- `recipe_favorites`: SELECT public, INSERT/DELETE `auth.uid() = user_id`
+- `post_favorites`: SELECT public, ALL `auth.uid() = user_id`
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_recipe_favorite_count` | `recipe_favorites` | INSERT, DELETE | `update_recipe_favorite_count()` — updates `recipes.favorite_count` |
+| `trigger_update_post_favorite_count` | `post_favorites` | INSERT, DELETE | `update_post_favorite_count()` — updates `posts.favorite_count` |
+
+<CardGroup cols={2}>
+  <Card title="Feeds" icon="rss" href="/journeys/feeds">
+    Trending sort uses favorite_count
+  </Card>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Recipe favorites
+  </Card>
+</CardGroup>

@@ -1,0 +1,102 @@
+---
+title: Feeds
+description: "The two main content feeds — Following (Home) and Discover — plus content listing."
+---
+
+## What It Does
+
+Two main content feeds power the app: the Following feed (Home tab, authenticated only) and the Discover feed (all content, visible to everyone). Both use masonry grid layouts with infinite scroll.
+
+## Home Tab — Following Feed
+
+`app/(tabs)/index.tsx` — shows posts + recipes from users you follow, interleaved by `created_at`. Only visible when authenticated.
+
+### Double-Tap Home Tab Reset
+
+The tabs layout implements double-tap detection on the Home tab:
+- Tracks `lastHomeTabTapRef` with `DOUBLE_TAP_DELAY = 300ms`
+- On double-tap: calls `(global as any).homeTabDoubleTap?.()`
+- The Home screen registers a handler on `global.homeTabDoubleTap` to reset the feed to the Following view
+
+<Note>
+This pattern is unconventional (using `global` as an event bus) but works because React Native runs in a single JS context.
+</Note>
+
+## Discover Tab
+
+`app/(tabs)/discover.tsx` — all content, sortable by recent/trending/popular. Visible to everyone.
+
+## Screens & Components
+
+| Screen/Component | Purpose |
+|-----------------|---------|
+| `app/(tabs)/index.tsx` | Home/Following feed |
+| `app/(tabs)/discover.tsx` | Discover feed (all content) |
+| `ContentMasonryGrid` | Masonry layout for content cards |
+| `VirtualizedMasonryGrid` | Virtualized masonry for performance |
+| `MasonryGrid` | Base masonry grid |
+| `MasonryContentItem` | Individual masonry item |
+| `ContentCard` | Recipe/post card |
+| `FeedPostCard` | Post-specific card in feeds |
+| `ContentTabs` | Tab switcher (Recipes/Posts/All) |
+| `MetadataPills` | Film sim, camera model pills |
+| `TypeBadge` | Recipe/Post type indicator |
+| `ImageWithPlaceholder` | Image with loading placeholder |
+| `CreatorCard` | Featured creator card |
+
+## Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useRecipes` | Recipe list fetching with filters |
+| `usePosts` | Post list fetching with filters |
+| `useInfiniteScroll` | Pagination/infinite scroll logic |
+| `useScrollPosition` | Scroll tracking for tab bar hide/show |
+| `useTabBarScroll` | Context for animated tab bar visibility |
+| `useReducedMotion` | Respects accessibility motion preferences |
+
+## Tab Bar Behavior
+
+`AnimatedTabBar` (`src/components/navigation/AnimatedTabBar.tsx`) — custom animated tab bar that hides on scroll down, shows on scroll up (via `tabBarTranslateY` shared value from `TabBarScrollContext`). Uses React Native Reanimated for smooth 60fps animations.
+
+## Creators / Featured Users
+
+`GET /api/creators` — lists featured/active creators with sorting.
+- RPC: `get_creators_list` with `p_limit`, `p_offset`, `p_sort`
+- Displayed via `CreatorCard` component
+- Query key: `queryKeys.creators.list(filters)`
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase RPC functions directly — `supabase.rpc('get_discover_content_list')`, `supabase.rpc('get_follow_content_list')`, etc. It does NOT route through the Next.js API routes in `apps/web`.
+</Note>
+
+## RPC Functions
+
+| Function | Parameters | Returns | Notes |
+|----------|-----------|---------|-------|
+| `get_follow_content_list` | `p_limit` (20), `p_offset` (0), `p_current_user_id` | JSON | Posts + recipes from followed users, interleaved by created_at |
+| `get_discover_content_list` | `p_limit` (20), `p_offset` (0), `p_sort`, `p_current_user_id` | JSON | All content. Trending = favorite count in last 24h. Popular = total favorite count. Recent = created_at. |
+| `get_posts_list` | `p_limit` (20), `p_offset` (0), `p_sort`, `p_current_user_id` | JSON | Posts-only listing |
+| `get_creators_list` | `p_limit`, `p_offset`, `p_sort` | JSON | Featured/active creators |
+
+<Note>
+There is no standalone `get_recipes_list` RPC function. Recipe listing is handled through the discover content list or via direct Supabase queries in the API route (`/api/recipes/list`).
+</Note>
+
+## React Query Configuration
+
+- `staleTime: 5 minutes` (set in root QueryClient)
+- `retry: 2`
+- Cache cleared on logout (`queryClient.clear()`)
+- `freezeOnBlur: false` for Home tab specifically (prevents skeleton getting stuck when query resolves while tab is blurred)
+
+<CardGroup cols={2}>
+  <Card title="Favorites" icon="heart" href="/journeys/favorites">
+    Trending algorithm uses favorite_count
+  </Card>
+  <Card title="Follows" icon="user-plus" href="/journeys/follows">
+    Following feed content source
+  </Card>
+</CardGroup>

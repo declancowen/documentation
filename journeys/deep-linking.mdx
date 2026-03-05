@@ -1,0 +1,56 @@
+---
+title: Deep Linking
+description: "Universal links and custom scheme deep linking connecting web URLs to mobile app screens."
+---
+
+## What It Does
+
+Connects web URLs to mobile app screens via both custom scheme (`recipe-room://`) and universal links (`https://reciperoom.io/`).
+
+## Deep Link Types
+
+| Type | Pattern | Examples |
+|------|---------|---------|
+| Custom scheme | `recipe-room://` | `recipe-room://recipe/{id}`, `recipe-room://post/{id}`, `recipe-room://collection/{id}`, `recipe-room://profile/{username}`, `recipe-room://search?q={query}` |
+| Universal links | `https://reciperoom.io/` | `https://reciperoom.io/recipes/{id}`, `https://reciperoom.io/posts/{id}`, `https://reciperoom.io/collections/{id}`, `https://reciperoom.io/profile/{username}` |
+
+## Mobile Implementation
+
+- `src/utils/deepLinking.ts` — handles URL parsing and navigation for both schemes
+- Integrated in root `_layout.tsx` — waits for splash screen to finish before processing
+- Uses Expo Linking API for URL handling
+
+## Apple App Site Association (AASA)
+
+`apps/web-interim/src/app/.well-known/apple-app-site-association/route.ts` serves the AASA file for iOS universal links:
+- Returns JSON with `applinks.details[].appIDs` and `applinks.components[]`
+- Paths: `/recipes/*`, `/posts/*`, `/collections/*`, `/profile/*`
+- Team ID and Bundle ID configured for the production app
+
+## Android Asset Links
+
+`apps/web-interim/src/app/.well-known/assetlinks.json/route.ts` serves the Android Asset Links file.
+
+<Warning>
+The SHA256 certificate fingerprint is still a placeholder (`YOUR_SHA256_FINGERPRINT`). This needs to be replaced with the actual signing key fingerprint before Android App Links will work. Get it via `eas credentials --platform android` or from Google Play Console.
+</Warning>
+
+## Content Redirect Pages (Web Interim)
+
+Content redirect pages exist for `/recipes/[id]`, `/posts/[id]`, `/collections/[id]`:
+- Attempt to deep-link into the mobile app first
+- If app isn't installed, show "app only" fallback with waitlist signup
+- Uses the `AppOnlyContent` component
+
+<Note>
+The AASA file supports `/recipes/*`, `/posts/*`, `/collections/*`, `/profile/*`. Mobile `deepLinking.ts` also handles `/search?q=...` via custom scheme — not a conflict since search uses `recipe-room://` rather than universal links.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Login & Auth" icon="right-to-bracket" href="/journeys/login">
+    Auth callbacks also route through web interim
+  </Card>
+  <Card title="Web Interim" icon="globe" href="/journeys/web-interim">
+    Full web interim documentation
+  </Card>
+</CardGroup>

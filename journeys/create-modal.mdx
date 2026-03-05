@@ -1,0 +1,41 @@
+---
+title: Create Modal
+description: "The entry point for all content creation — a transparent modal bottom sheet."
+---
+
+## What It Does
+
+A transparent modal bottom sheet that lets users choose what to create. This is the single entry point for all content creation in the app.
+
+## How It Works
+
+`app/create.tsx` is presented as `containedTransparentModal` with `fade` animation:
+
+- Pan gesture to dismiss (swipe down > 100px or velocity > 500)
+- Spring animation on mount, timing animation on dismiss
+- Haptic feedback on option press
+- Navigation pattern: dismisses modal first, then navigates to creation route after 150ms delay (prevents navigation conflicts)
+
+## Options
+
+| Option | Icon | Navigates To |
+|--------|------|-------------|
+| Post | `ImageIcon` (Lucide) | `app/post/new.tsx` |
+| Recipe | `Film` (Lucide) | `app/recipe/new.tsx` |
+| Collection | `LibraryBig` (Lucide) | `app/collection/new.tsx` |
+
+## Unauthenticated State
+
+Shows "Sign in to create content" with a login button instead of the three creation options. Uses `AuthOverlayProvider` for auth gating.
+
+<CardGroup cols={3}>
+  <Card title="Recipes" icon="camera" href="/journeys/recipes">
+    Recipe creation flow
+  </Card>
+  <Card title="Posts" icon="image" href="/journeys/posts">
+    Post creation flow
+  </Card>
+  <Card title="Collections" icon="folder" href="/journeys/collections">
+    Collection creation flow
+  </Card>
+</CardGroup>

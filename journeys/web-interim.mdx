@@ -1,0 +1,103 @@
+---
+title: Web Interim
+description: "The standalone Next.js app supporting mobile with auth callbacks, deep links, content redirects, and landing page."
+---
+
+## What It Does
+
+`apps/web-interim` is a standalone Next.js 14 app that supports the mobile app with auth callbacks, deep link verification, content redirects, and a landing page with waitlist signup.
+
+<Warning>
+This is a SEPARATE app from the full web client (`apps/web`). They have separate `package.json`, `node_modules`, and codebases. The web interim does NOT have API routes for content CRUD — those live in `apps/web`.
+</Warning>
+
+## Architecture
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 14 (App Router) |
+| Styling | Tailwind CSS (no CSS Modules) |
+| Auth | Supabase browser client (`@supabase/ssr`) |
+| Deployment | Vercel |
+| Fonts | Cormorant Garamond / Fraunces (serif) |
+
+## Pages
+
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/` | `page.tsx` | Landing page with waitlist signup |
+| `/confirmation-success` | `ConfirmationSuccess` | Email verified success |
+| `/reset-password` | `ResetPassword` | Password reset form |
+| `/email-change-pending` | `EmailChangePending` | Waiting for new email confirmation |
+| `/change-email` | `ChangeEmail` | Email change success |
+| `/auth/auth-error` | `AuthError` | Auth link invalid/expired |
+| `/recipes/[id]` | `AppOnlyContent` | Recipe deep link redirect |
+| `/posts/[id]` | `AppOnlyContent` | Post deep link redirect |
+| `/collections/[id]` | `AppOnlyContent` | Collection deep link redirect |
+| `/.well-known/apple-app-site-association` | Route handler | AASA for iOS universal links |
+| `/.well-known/assetlinks.json` | Route handler | Android Asset Links |
+| `/api/waitlist` | Route handler | Loops.so waitlist signup |
+
+## Components
+
+| Component | Purpose |
+|-----------|---------|
+| `AuthCallbackHandler` | Processes auth tokens from email links (PKCE code exchange + hash fragment handling) |
+| `RecoveryHandler` | Backup handler for recovery hash fragments (possibly redundant) |
+| `AppOnlyContent` | Content redirect page — deep link attempt + "app only" fallback with waitlist |
+
+## Design Language
+
+- Monochrome palette (#111111 primary, #fafafa backgrounds, #777777 secondary text)
+- Cormorant Garamond / Fraunces serif fonts for headings
+- Film-strip sprocket edge decorations on desktop
+- Grain overlay texture
+- Staggered entrance animations (cubic-bezier easing)
+- Consistent accent lines (gradient top/bottom borders)
+
+## Key Differences from `apps/web`
+
+| Aspect | Web Interim | Full Web Client |
+|--------|------------|----------------|
+| API routes | No content CRUD | All API routes |
+| Middleware | None | Auth-based route protection |
+| Supabase client | Browser-only | Server + browser |
+| Shared package | No dependency | Uses `@recipe-room/shared` |
+| node_modules | Standalone | Hoisted from monorepo root |
+| Scope | Auth callbacks, redirects, landing | Full web application |
+
+## Landing Page & Waitlist
+
+The home page is a branded landing page with:
+- Hero section with app description and waitlist form
+- Feature highlights
+- Film-strip visual motif
+- Waitlist form → `POST /api/waitlist` → Loops.so API
+- Responsive design (mobile + desktop)
+
+<Warning>
+`apps/web-interim/src/app/api/waitlist/route.ts` contains a hardcoded Loops.so API key in the `Authorization` header. This should be moved to an environment variable (`LOOPS_API_KEY`). The `.env.example` already defines it — the route handler was never updated to use it.
+</Warning>
+
+## Web Client Middleware (apps/web only)
+
+`apps/web/src/middleware.ts` implements Next.js middleware for auth-based route protection. This exists in the full web client, NOT in the web interim.
+
+| Route Type | Examples | Behavior |
+|-----------|---------|----------|
+| Protected | `/settings`, `/saved`, `/create/*`, `/me` | Redirect to `/login` if unauthenticated |
+| Public | `/`, `/login`, `/register`, `/recipes/*`, `/posts/*` | Accessible to all |
+
+Uses `@supabase/ssr` `createServerClient` with cookie handling. Phase 2 consideration when the full web client is refactored.
+
+<CardGroup cols={2}>
+  <Card title="Login & Auth" icon="right-to-bracket" href="/journeys/login">
+    Auth callback chain details
+  </Card>
+  <Card title="Deep Linking" icon="link" href="/journeys/deep-linking">
+    Universal links and AASA
+  </Card>
+  <Card title="Registration" icon="user-plus" href="/journeys/registration">
+    Email confirmation flow
+  </Card>
+</CardGroup>

@@ -1,0 +1,43 @@
+---
+title: Reposts
+description: "Repost (share) someone else's recipe or post to your profile."
+---
+
+## What It Does
+
+Repost someone else's recipe or post to share it on your profile. Similar to a retweet.
+
+## User Flow
+
+User taps repost icon on detail view or card → optimistic UI update → direct Supabase call (`supabase.from('recipe_reposts').insert/delete` or `supabase.from('post_reposts').insert/delete`).
+
+<Note>
+The mobile app calls Supabase directly for reposts. Unlike favorites, `useToggleRepost` uses `invalidateQueries` on success (rather than pure optimistic updates) because repost state is less latency-sensitive than the heart animation.
+</Note>
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/api/recipes/[id]/repost` | Repost a recipe |
+| `DELETE` | `/api/recipes/[id]/repost` | Un-repost a recipe |
+| `POST` | `/api/posts/[id]/repost` | Repost a post |
+| `DELETE` | `/api/posts/[id]/repost` | Un-repost a post |
+
+## Database
+
+| Table | Key Columns | Notes |
+|-------|------------|-------|
+| `recipe_reposts` | `user_id` (FK→profiles), `recipe_id` (FK→recipes) | Composite PK |
+| `post_reposts` | `user_id` (FK→profiles), `post_id` (FK→posts) | Composite PK |
+
+## RLS Policies
+
+SELECT public, INSERT/DELETE `auth.uid() = user_id`
+
+## Triggers
+
+| Trigger | Table | Events | Function |
+|---------|-------|--------|----------|
+| `trigger_update_recipe_repost_count` | `recipe_reposts` | INSERT, DELETE | `update_recipe_repost_count()` |
+| `trigger_update_post_repost_count` | `post_reposts` | INSERT, DELETE | `update_post_repost_count()` |

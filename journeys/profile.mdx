@@ -1,0 +1,147 @@
+---
+title: Profile
+description: "User profile viewing, editing, account settings, password/email changes, and account deletion."
+---
+
+## What It Does
+
+The profile is the hub for a user's content, stats, and social connections. Supports viewing, editing, password/email changes, and account deletion.
+
+## User Flow — View
+
+- Own profile: Profile tab → `app/(tabs)/profile.tsx`
+- Other user: Tap any username/avatar → `app/connections/[username].tsx`
+- Shows: avatar, cover photo, name, username, bio, location, Instagram handle, stats (recipes, posts, collections, followers, following), content tabs
+
+## User Flow — Edit
+
+Own profile → tap edit → `app/settings.tsx`:
+- Edit username (with real-time availability check via `useUsernameCheck`), first name, surname, location, bio, Instagram handle, avatar, cover photo
+- Submit → `PATCH /api/users/me` (calls `update_user_profile` RPC)
+
+## Password & Email Changes
+
+- **Password change:** From `app/settings.tsx`, calls Supabase auth `updateUser({ password })` directly
+- **Email change:** Calls `updateUser({ email })` → triggers double-confirmation flow (see [Login journey](/journeys/login) for full callback chain)
+
+## Account Deletion
+
+- `DELETE /api/users/[id]` → calls `delete_user_account(p_user_id)` RPC
+- Cascading deletion of all user content
+- Removes user from Loops.so
+- Clears session and navigates to login
+- Requires `ConfirmDeleteModal` confirmation
+
+## Screens
+
+| Screen | Purpose |
+|--------|---------|
+| `app/(tabs)/profile.tsx` | Own profile (Profile tab) |
+| `app/connections/[username].tsx` | Other user's profile |
+| `app/followers/[username].tsx` | Follower list |
+| `app/following/[username].tsx` | Following list |
+| `app/settings.tsx` | Profile editing + app settings |
+
+## Components
+
+| Component | Purpose |
+|-----------|---------|
+| `ProfileCard` | Profile header with stats |
+| `FollowButton` | Follow/unfollow toggle |
+| `ContentTabs` | Recipes/Posts/Collections tab switcher |
+| `ThemeSelector` | Dark/light/system theme picker |
+| `SettingsModal` | Settings UI |
+| `ProfileImagePicker` | Avatar/cover photo picker |
+| `SettingRow` / `SettingSection` | Settings list primitives |
+
+## Context
+
+`ProfileProvider` (`src/context/ProfileContext.tsx`) — manages which profile is being viewed, `viewingUsername` state, `resetToOwnProfile()` for tab press behavior.
+
+## Hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useProfileData` | Profile data fetching |
+| `useProfileUpdate` | Profile edit mutations |
+| `useUser` | User data |
+| `useTabAvatar` | Avatar URL for tab bar icon |
+| `useUsernameCheck` | Debounced username availability |
+| `profileTransforms` | Data transformation utilities |
+
+## Data Access Pattern
+
+<Note>
+The mobile app calls Supabase RPC functions directly for profile data — `supabase.rpc('get_user_profile_data')`, `supabase.rpc('update_user_profile')`, etc. The web API routes exist for the web client (Phase 2).
+</Note>
+
+## Web API Routes (Phase 2)
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `GET` | `/api/users/[id]/profile-data` | Get full profile (calls `get_user_profile_data` or `get_user_profile_data_by_id` RPC) |
+| `PATCH` | `/api/users/me` | Update own profile (calls `update_user_profile` RPC) |
+| `GET` | `/api/users/[id]` | Get basic user info |
+| `DELETE` | `/api/users/[id]` | Delete account (calls `delete_user_account` RPC) |
+| `GET` | `/api/users/[id]/recipes` | User's recipes |
+| `GET` | `/api/users/[id]/collections` | User's collections |
+| `GET` | `/api/users/[id]/favorites` | User's favorites |
+| `GET` | `/api/users/[id]/saved-items` | User's saved items |
+| `GET` | `/api/users/[id]/reposts` | User's reposts |
+| `GET` | `/api/users/search` | Search users (for @mentions, user tagging) |
+
+## RPC Functions
+
+| Function | Parameters | Returns |
+|----------|-----------|---------|
+| `get_user_profile_data` | `p_username`, `p_current_user_id`, `p_limit` (8), `p_offset` (0) | JSON — single round-trip: profile + recipes + posts + collections + follow status + stats |
+| `get_user_profile_data_by_id` | `p_user_id`, `p_current_user_id`, `p_limit` (8), `p_offset` (0) | JSON — same as above but by UUID |
+| `get_user_profile_collections` | `p_username`, `p_limit` (8), `p_offset` (0) | JSON — user's collections (paginated) |
+| `get_user_profile_collections_by_id` | `p_user_id`, `p_limit` (8), `p_offset` (0) | JSON — same by UUID |
+| `update_user_profile` | `p_user_id`, `p_username`, `p_first_name`, `p_surname`, `p_location`, `p_bio`, `p_instagram_handle`, `p_avatar_url`, `p_cover_photo_url` (all optional) | SETOF profiles — returns updated profile row |
+| `delete_user_account` | `p_user_id` | void — cascading account deletion |
+
+## Database (profiles table)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | uuid PK | FK→auth.users.id |
+| `username` | text UNIQUE | Required |
+| `first_name` | text | Required |
+| `surname` | text | Required |
+| `location` | text | Optional, default '' |
+| `bio` | text | Optional, default '' |
+| `instagram_handle` | text | Optional |
+| `avatar_url` | text | Optional |
+| `cover_photo_url` | text | Optional |
+| `recipe_count` | int | Denormalized, default 0 |
+| `post_count` | int | Denormalized, default 0 |
+| `collection_count` | int | Denormalized, default 0 |
+| `follower_count` | int | Denormalized, default 0 |
+| `following_count` | int | Denormalized, default 0 |
+
+## RLS Policies
+
+- **SELECT:** `true` (public — all profiles visible)
+- **INSERT:** `auth.uid() = id`
+- **UPDATE:** `auth.uid() = id`
+
+## Tab Bar Avatar
+
+The Profile tab icon shows the user's avatar (via `useTabAvatar` hook + `ExpoImage`) instead of a generic User icon when logged in.
+
+## Profile Tab Press Behavior
+
+When viewing another user's profile and pressing the Profile tab, `resetToOwnProfile()` is called (via `ProfileProvider` context) to navigate back to own profile.
+
+<CardGroup cols={3}>
+  <Card title="Follows" icon="user-plus" href="/journeys/follows">
+    Follow system
+  </Card>
+  <Card title="Image Upload" icon="upload" href="/journeys/image-upload">
+    Avatar and cover photo
+  </Card>
+  <Card title="Registration" icon="user" href="/journeys/registration">
+    Profile creation on signup
+  </Card>
+</CardGroup>
